@@ -1,6 +1,8 @@
 package org.example.bbottd_trainer.presentation
 
+import org.example.bbottd_trainer.domain.BallState
 import org.example.bbottd_trainer.domain.BoardPosition
+import org.example.bbottd_trainer.domain.EditFailure
 import org.example.bbottd_trainer.domain.Player
 import org.example.bbottd_trainer.domain.PlayerId
 import org.example.bbottd_trainer.domain.PlayerStatus
@@ -13,6 +15,7 @@ import org.example.bbottd_trainer.domain.setup
 import org.example.bbottd_trainer.domain.team
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BoardViewTest {
@@ -81,6 +84,64 @@ class BoardViewTest {
 
         assertTrue(PlayerId("h1") !in dugoutIds)
         assertTrue(PlayerId("a1") !in dugoutIds)
+    }
+
+    @Test
+    fun withNothingSelectedThereAreNoTargets() {
+        val state = BoardUiState(setup = mixedSetup)
+
+        assertFalse(state.isCellTarget(BoardPosition(0, 0)))
+        assertFalse(state.isDugoutTarget(TeamId.HOME))
+        assertFalse(state.isOffPitchBallTarget)
+    }
+
+    @Test
+    fun aSelectedPlayerTargetsEmptyCellsAndOnlyTheirOwnDugout() {
+        val state = BoardUiState(setup = mixedSetup, selection = Selection.Player(PlayerId("h2")))
+
+        assertTrue(state.isCellTarget(BoardPosition(0, 0)), "empty cell")
+        assertFalse(state.isCellTarget(BoardPosition(7, 13)), "occupied by a teammate")
+        assertFalse(state.isCellTarget(BoardPosition(7, 12)), "occupied by an opponent")
+        assertTrue(state.isDugoutTarget(TeamId.HOME))
+        assertFalse(state.isDugoutTarget(TeamId.AWAY))
+        assertFalse(state.isOffPitchBallTarget)
+    }
+
+    @Test
+    fun theSelectedBallTargetsEveryOtherCellIncludingPlayersAndTheOffPitchArea() {
+        val onPitch = BoardUiState(
+            setup = mixedSetup.copy(ball = BallState(BoardPosition(4, 4))),
+            selection = Selection.Ball,
+        )
+
+        assertTrue(onPitch.isCellTarget(BoardPosition(0, 0)))
+        assertTrue(onPitch.isCellTarget(BoardPosition(7, 13)), "a player's cell")
+        assertFalse(onPitch.isCellTarget(BoardPosition(4, 4)), "where the ball already is")
+        assertFalse(onPitch.isDugoutTarget(TeamId.HOME))
+        assertTrue(onPitch.isOffPitchBallTarget)
+
+        val offPitch = onPitch.copy(setup = mixedSetup)
+        assertFalse(offPitch.isOffPitchBallTarget, "already off the pitch")
+    }
+
+    @Test
+    fun failuresAreDescribedWithPlayerAndTeamNames() {
+        val sample = SampleSetups.initial
+        val home1 = PlayerId("home-1")
+
+        assertEquals(
+            "Cell (7, 12) is occupied by Away Player 10.",
+            EditFailure.CellOccupied(BoardPosition(7, 12), PlayerId("away-10")).describe(sample),
+        )
+        assertEquals(
+            "Home Player 1 can only go to the Home dugout.",
+            EditFailure.NotOwnDugout(home1, TeamId.AWAY).describe(sample),
+        )
+        assertEquals(
+            "Home Player 1 cannot be set to Prone there.",
+            EditFailure.StatusNotAllowed(home1, PlayerStatus.PRONE).describe(sample),
+        )
+        assertEquals("(15, 0) is outside the pitch.", EditFailure.OutsidePitch(BoardPosition(15, 0)).describe(sample))
     }
 
     @Test

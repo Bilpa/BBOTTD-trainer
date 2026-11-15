@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.example.bbottd_trainer.domain.TeamColor
 import org.example.bbottd_trainer.presentation.PlayerToken
+import org.example.bbottd_trainer.ui.SelectionColor
 
 /** The colour a team colour is displayed as. */
 val TeamColor.displayColor: Color
@@ -28,25 +29,33 @@ val TeamColor.displayColor: Color
 
 /**
  * A round player token filled with the team colour and showing the player's number, so the team
- * is visible on every token.
+ * is visible on every token. A selected token gets a thick cyan ring.
  */
 @Composable
 fun PlayerTokenView(
     token: PlayerToken,
     size: Dp,
     modifier: Modifier = Modifier,
+    selected: Boolean = false,
 ) {
     val numberText = token.number?.toString() ?: ""
     Box(
         modifier = modifier
             .size(size)
             .background(token.teamColor.displayColor, CircleShape)
-            .border(1.dp, Color.White, CircleShape)
+            .then(
+                if (selected) {
+                    Modifier.border(3.dp, SelectionColor, CircleShape)
+                } else {
+                    Modifier.border(1.dp, Color.White, CircleShape)
+                },
+            )
             .semantics {
                 contentDescription = buildString {
                     append(token.name)
                     token.number?.let { append(", number $it") }
                     append(", ${token.teamName} team")
+                    if (selected) append(", selected")
                 }
             },
         contentAlignment = Alignment.Center,

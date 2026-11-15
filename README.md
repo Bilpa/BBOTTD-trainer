@@ -9,17 +9,42 @@ tackle zones, blocks or dice. Optional rule-aware analysis may be added later, s
 
 ## Status
 
-Early development. The shared domain model (pitch, teams, players, ball and the initial sample setup) is
-implemented and tested. The app still shows a placeholder screen; no editor functionality is implemented yet.
+Early development; editing interactions (milestone 2) are in progress.
+
+What works now:
+
+- A 15 × 26 pitch with end zones, wide zones and the line of scrimmage.
+- Home (blue) and away (red) teams with 16 players each, numbered 1–16. Every player token shows its team
+  colour.
+- A dugout for each team (home on the left of the pitch, away on the right), with sections for reserves,
+  knocked out, casualties and sent off. The dugouts can be hidden; on Android they start hidden.
+- A ball marker that moves independently of players. While the ball is off the pitch it sits in an area
+  below the pitch.
+- Moving players and the ball by selecting them and then clicking a destination (see below).
+- Player statuses: on the pitch a player is standing, prone or stunned; in the dugout they are a reserve,
+  knocked out, a casualty or sent off.
+
+The app starts with the initial sample setup: all 32 players in their dugouts and the ball off the pitch.
+
+## Using the editor
+
+1. Click a player (on the pitch or in a dugout) or the ball to select it. It gets a cyan ring, and the
+   places it can go are highlighted. Click it again, or press Escape, to deselect.
+2. Click where it should go:
+   - a player: an empty pitch cell, or a section of their own team's dugout (which sets their status);
+   - the ball: any pitch cell, including one with a player, or the area below the pitch to take it off.
+3. Clicking another player while one is selected selects that player instead.
+
+A player coming from the dugout arrives on the pitch standing; a player moved within the pitch keeps their
+status. If a move is not possible, for example into the other team's dugout, a message explains why and
+nothing changes.
 
 ## Planned features
 
-- A 15 × 26 pitch with end zones, wide zones and the line of scrimmage.
-- Home and away teams with 16 players each; every player token shows which team it belongs to.
-- A dugout for each team (home on the left of the pitch, away on the right) for players who are not on
-  the pitch: reserves, knocked out, casualties and sent off.
-- Moving players by drag-and-drop or by selecting a player and then clicking/tapping a destination.
-- A ball marker that moves independently of players.
+- Drag-and-drop as an alternative to select-then-click.
+- Setting a player's status (standing, prone, stunned, or a dugout status) from a context menu, with prone
+  and stunned players shown darker.
+- Resetting to the sample setup.
 - Saving and reopening setups locally. There is no backend, account or cloud sync.
 - Later: undo/redo, training scenarios with instructions and annotations, and optional rule-aware analysis.
 

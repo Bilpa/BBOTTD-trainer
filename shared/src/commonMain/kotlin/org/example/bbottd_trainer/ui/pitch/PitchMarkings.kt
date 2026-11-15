@@ -14,7 +14,7 @@ enum class PitchArea {
  * Pitch markings, as presentation configuration.
  *
  * Editing operations must not depend on these: a player may be placed in any empty cell whatever
- * its area. The defaults are the standard layout from `docs/DOMAIN_MODEL.md`.
+ * its area.
  */
 data class PitchMarkings(
     val endZoneRows: Set<Int> = setOf(0, Board.HEIGHT - 1),

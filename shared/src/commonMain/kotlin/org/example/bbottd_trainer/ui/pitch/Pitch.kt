@@ -1,6 +1,7 @@
 package org.example.bbottd_trainer.ui.pitch
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -19,7 +20,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.example.bbottd_trainer.domain.Board
 import org.example.bbottd_trainer.domain.BoardPosition
+import org.example.bbottd_trainer.domain.PlayerId
 import org.example.bbottd_trainer.presentation.PlayerToken
+import org.example.bbottd_trainer.ui.TargetCellOverlay
 import org.example.bbottd_trainer.ui.ball.BallTokenView
 import org.example.bbottd_trainer.ui.player.PlayerTokenView
 
@@ -31,13 +34,19 @@ private val LineOfScrimmageColor = Color.White
 
 /**
  * The 15 × 26 pitch, drawn north (`y = 0`) at the top, with square cells scaled to fit the
- * available space.
+ * available space. Every cell can be clicked or tapped; [isTarget] cells are highlighted as places
+ * the current selection can be moved to.
  */
 @Composable
 fun Pitch(
     modifier: Modifier = Modifier,
     tokens: Map<BoardPosition, PlayerToken> = emptyMap(),
     ballPosition: BoardPosition? = null,
+    selectedPlayerId: PlayerId? = null,
+    ballSelected: Boolean = false,
+    isTarget: (BoardPosition) -> Boolean = { false },
+    onCellClick: (BoardPosition) -> Unit = {},
+    onBallClick: () -> Unit = {},
     markings: PitchMarkings = PitchMarkings.STANDARD,
 ) {
     BoxWithConstraints(modifier, contentAlignment = Alignment.TopCenter) {
@@ -52,12 +61,18 @@ fun Pitch(
                 Row {
                     for (x in Board.columns) {
                         val position = BoardPosition(x, y)
+                        val token = tokens[position]
                         PitchCell(
                             area = markings.areaOf(position),
                             lineOfScrimmageBelow = markings.hasLineOfScrimmageBelow(y),
                             size = cellSize,
-                            token = tokens[position],
+                            token = token,
+                            tokenSelected = token != null && token.playerId == selectedPlayerId,
                             hasBall = position == ballPosition,
+                            ballSelected = ballSelected,
+                            isTarget = isTarget(position),
+                            onClick = { onCellClick(position) },
+                            onBallClick = onBallClick,
                         )
                     }
                 }
@@ -72,7 +87,12 @@ private fun PitchCell(
     lineOfScrimmageBelow: Boolean,
     size: Dp,
     token: PlayerToken?,
+    tokenSelected: Boolean,
     hasBall: Boolean,
+    ballSelected: Boolean,
+    isTarget: Boolean,
+    onClick: () -> Unit,
+    onBallClick: () -> Unit,
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -80,6 +100,7 @@ private fun PitchCell(
             .size(size)
             .background(area.color)
             .drawBehind {
+                if (isTarget) drawRect(color = TargetCellOverlay)
                 drawRect(color = GridLineColor, style = Stroke(width = 1.dp.toPx()))
                 if (lineOfScrimmageBelow) {
                     // Drawn just inside the cell so the next row's background does not cover it.
@@ -92,19 +113,23 @@ private fun PitchCell(
                         strokeWidth = strokeWidth,
                     )
                 }
-            },
+            }
+            .clickable(onClick = onClick),
     ) {
         if (token != null) {
-            PlayerTokenView(token = token, size = size * 0.85f)
+            PlayerTokenView(token = token, size = size * 0.85f, selected = tokenSelected)
         }
         if (hasBall) {
+            // The ball has its own click target, so it can be selected even on a player's cell.
+            val ballModifier = Modifier.clickable(onClick = onBallClick)
             if (token == null) {
-                BallTokenView(size = size * 0.55f)
+                BallTokenView(size = size * 0.55f, selected = ballSelected, modifier = ballModifier)
             } else {
                 // Shares the cell with a player: smaller, in the corner, so both stay visible.
                 BallTokenView(
                     size = size * 0.4f,
-                    modifier = Modifier.align(Alignment.BottomEnd),
+                    selected = ballSelected,
+                    modifier = Modifier.align(Alignment.BottomEnd).then(ballModifier),
                 )
             }
         }

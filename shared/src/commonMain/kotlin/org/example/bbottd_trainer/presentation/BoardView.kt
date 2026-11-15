@@ -55,6 +55,28 @@ fun TacticalSetup.dugoutSections(teamId: TeamId): List<DugoutSection> {
     }
 }
 
+/**
+ * Whether clicking [position] would move the current selection there, for target highlighting.
+ * A selected player can go to any empty cell; the ball can go to any cell.
+ */
+fun BoardUiState.isCellTarget(position: BoardPosition): Boolean =
+    when (selection) {
+        Selection.Ball -> position != setup.ball.position
+        is Selection.Player -> setup.playerAt(position) == null
+        null -> false
+    }
+
+/** Whether the selected player can be moved into [team]'s dugout (only their own team's). */
+fun BoardUiState.isDugoutTarget(team: TeamId): Boolean =
+    when (val current = selection) {
+        is Selection.Player -> setup.teamOf(current.playerId) == team
+        Selection.Ball, null -> false
+    }
+
+/** Whether the ball is selected and can be taken off the pitch. */
+val BoardUiState.isOffPitchBallTarget: Boolean
+    get() = selection == Selection.Ball && setup.ball.isOnPitch
+
 private fun Player.toToken(team: Team): PlayerToken =
     PlayerToken(
         playerId = id,

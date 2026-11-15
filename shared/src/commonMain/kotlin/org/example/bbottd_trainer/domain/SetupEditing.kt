@@ -4,7 +4,7 @@ package org.example.bbottd_trainer.domain
 //
 // These are editor and data-integrity rules, not Blood Bowl rules: any player may be moved to any
 // empty cell. Each operation returns a new setup or an explicit failure; the input is never
-// changed. Status rules follow the table in docs/DOMAIN_MODEL.md §8.
+// changed.
 
 /** The outcome of an editing operation. */
 sealed interface EditResult {
