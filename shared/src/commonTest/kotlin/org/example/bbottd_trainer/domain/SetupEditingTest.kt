@@ -120,6 +120,52 @@ class SetupEditingTest {
     }
 
     @Test
+    fun aPlayerOnTheBallsCellCarriesTheBallWhenMoved() {
+        val withBall = start.moveBall(BoardPosition(7, 13)).setup()
+
+        val result = withBall.movePlayerToCell(PlayerId("h1"), BoardPosition(7, 2)).setup()
+
+        assertEquals(BoardPosition(7, 2), result.player("h1").position)
+        assertEquals(BoardPosition(7, 2), result.ball.position)
+    }
+
+    @Test
+    fun proneAndStunnedPlayersAlsoCarryTheBall() {
+        val proneWithBall = start.moveBall(BoardPosition(5, 14)).setup()
+        val stunnedWithBall = start.moveBall(BoardPosition(9, 14)).setup()
+
+        val afterProne = proneWithBall.movePlayerToCell(PlayerId("h2"), BoardPosition(1, 1)).setup()
+        val afterStunned = stunnedWithBall.movePlayerToCell(PlayerId("h3"), BoardPosition(2, 2)).setup()
+
+        assertEquals(BoardPosition(1, 1), afterProne.ball.position)
+        assertEquals(BoardPosition(2, 2), afterStunned.ball.position)
+    }
+
+    @Test
+    fun aPlayerNotOnTheBallsCellLeavesTheBallWhereItIs() {
+        val withBall = start.moveBall(BoardPosition(4, 4)).setup()
+
+        val result = withBall.movePlayerToCell(PlayerId("h1"), BoardPosition(7, 2)).setup()
+
+        assertEquals(BoardPosition(4, 4), result.ball.position)
+    }
+
+    @Test
+    fun aDugoutPlayerNeverCarriesTheBallEvenWhenItIsOffThePitch() {
+        // Both have no position (null); that must not count as sharing a cell.
+        val result = start.movePlayerToCell(PlayerId("h4"), BoardPosition(3, 20)).setup()
+
+        assertNull(result.ball.position)
+    }
+
+    @Test
+    fun movingToOwnCellWithTheBallChangesNothing() {
+        val withBall = start.moveBall(BoardPosition(7, 13)).setup()
+
+        assertEquals(withBall, withBall.movePlayerToCell(PlayerId("h1"), BoardPosition(7, 13)).setup())
+    }
+
+    @Test
     fun theBallDoesNotBlockAMove() {
         val withBall = start.moveBall(BoardPosition(4, 4)).setup()
 

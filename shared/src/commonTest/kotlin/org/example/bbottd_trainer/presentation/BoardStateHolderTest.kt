@@ -143,19 +143,41 @@ class BoardStateHolderTest {
 
         assertEquals(BoardPosition(3, 20), holder.positionOf("h2"))
         assertEquals(PlayerStatus.ON_FIELD, holder.statusOf("h2"))
-        assertNull(holder.current.selection, "selection cleared after a move")
+        assertEquals(
+            Selection.Player(PlayerId("h2")),
+            holder.current.selection,
+            "player stays selected after moving to a cell",
+        )
         assertTrue(holder.current.isDirty)
     }
 
     @Test
-    fun selectedPitchPlayerMovesToAnotherCell() {
+    fun selectedPitchPlayerCanBeMovedRepeatedlyWithoutReselecting() {
         val holder = holder()
 
         holder.click(
             BoardAction.CellClicked(BoardPosition(7, 13)),
             BoardAction.CellClicked(BoardPosition(1, 1)),
+            BoardAction.CellClicked(BoardPosition(2, 2)),
         )
 
+        assertEquals(BoardPosition(2, 2), holder.positionOf("h1"))
+        assertEquals(Selection.Player(PlayerId("h1")), holder.current.selection)
+    }
+
+    @Test
+    fun clearSelectionDeselectsAMovedPlayer() {
+        // ClearSelection is sent for Escape, a right-click on an empty cell and a click outside
+        // the pitch.
+        val holder = holder()
+
+        holder.click(
+            BoardAction.CellClicked(BoardPosition(7, 13)),
+            BoardAction.CellClicked(BoardPosition(1, 1)),
+            BoardAction.ClearSelection,
+        )
+
+        assertNull(holder.current.selection)
         assertEquals(BoardPosition(1, 1), holder.positionOf("h1"))
     }
 
@@ -265,6 +287,134 @@ class BoardStateHolderTest {
 
         assertEquals("Only the ball can be placed here.", holder.current.message?.text)
         assertNull(holder.positionOf("h2"))
+    }
+
+    // --- Status context menu ---------------------------------------------------------------
+
+    @Test
+    fun statusMenuOpensForAPlayerAndCanBeDismissed() {
+        val holder = holder()
+
+        holder.click(BoardAction.OpenStatusMenu(PlayerId("h1")))
+        assertEquals(PlayerId("h1"), holder.current.statusMenuPlayerId)
+
+        holder.click(BoardAction.DismissStatusMenu)
+        assertNull(holder.current.statusMenuPlayerId)
+        assertEquals(start, holder.current.setup)
+    }
+
+    @Test
+    fun choosingProneOrStunnedKeepsThePlayerInPlaceAndClosesTheMenu() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.OpenStatusMenu(PlayerId("h1")),
+            BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.PRONE),
+        )
+        assertEquals(PlayerStatus.PRONE, holder.statusOf("h1"))
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertNull(holder.current.statusMenuPlayerId)
+        assertTrue(holder.current.isDirty)
+
+        holder.click(BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.STUNNED))
+        assertEquals(PlayerStatus.STUNNED, holder.statusOf("h1"))
+    }
+
+    @Test
+    fun choosingADugoutStatusMovesTheDugoutPlayerToThatSection() {
+        val holder = holder()
+
+        holder.click(BoardAction.SetPlayerStatus(PlayerId("h2"), PlayerStatus.CASUALTY))
+
+        assertEquals(PlayerStatus.CASUALTY, holder.statusOf("h2"))
+        assertNull(holder.positionOf("h2"))
+    }
+
+    @Test
+    fun aStatusChangeKeepsTheCurrentSelection() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.DugoutPlayerClicked(PlayerId("h2")),
+            BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.PRONE),
+        )
+
+        assertEquals(Selection.Player(PlayerId("h2")), holder.current.selection)
+    }
+
+    @Test
+    fun aStatusNotValidWhereThePlayerIsIsRejectedWithAMessage() {
+        val holder = holder()
+
+        holder.click(BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.RESERVE))
+
+        assertEquals(PlayerStatus.ON_FIELD, holder.statusOf("h1"))
+        assertEquals("h1 cannot be set to Reserves there.", holder.current.message?.text)
+        assertNull(holder.current.statusMenuPlayerId)
+    }
+
+    @Test
+    fun aProneOrStunnedPlayerMovedWithinThePitchKeepsTheirStatus() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.STUNNED),
+            BoardAction.CellClicked(BoardPosition(7, 13)),
+            BoardAction.CellClicked(BoardPosition(2, 2)),
+        )
+
+        assertEquals(BoardPosition(2, 2), holder.positionOf("h1"))
+        assertEquals(PlayerStatus.STUNNED, holder.statusOf("h1"))
+    }
+
+    // --- Double-click ----------------------------------------------------------------------
+
+    @Test
+    fun doubleClickTogglesAPitchPlayerBetweenStandingAndProne() {
+        val holder = holder()
+
+        holder.click(BoardAction.PlayerDoubleClicked(PlayerId("h1")))
+        assertEquals(PlayerStatus.PRONE, holder.statusOf("h1"))
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertTrue(holder.current.isDirty)
+
+        holder.click(BoardAction.PlayerDoubleClicked(PlayerId("h1")))
+        assertEquals(PlayerStatus.ON_FIELD, holder.statusOf("h1"))
+    }
+
+    @Test
+    fun doubleClickMakesAStunnedPlayerStand() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.STUNNED),
+            BoardAction.PlayerDoubleClicked(PlayerId("h1")),
+        )
+
+        assertEquals(PlayerStatus.ON_FIELD, holder.statusOf("h1"))
+    }
+
+    @Test
+    fun doubleClickOnADugoutPlayerHasNoEffect() {
+        val holder = holder()
+
+        holder.click(BoardAction.PlayerDoubleClicked(PlayerId("h2")))
+
+        assertEquals(start, holder.current.setup)
+        assertNull(holder.current.message)
+        assertFalse(holder.current.isDirty)
+    }
+
+    @Test
+    fun doubleClickKeepsTheCurrentSelection() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.DugoutPlayerClicked(PlayerId("h2")),
+            BoardAction.PlayerDoubleClicked(PlayerId("h1")),
+        )
+
+        assertEquals(Selection.Player(PlayerId("h2")), holder.current.selection)
     }
 
     // --- Messages and unsaved changes ------------------------------------------------------

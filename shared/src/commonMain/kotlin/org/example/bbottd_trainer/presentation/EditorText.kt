@@ -9,7 +9,7 @@ import org.example.bbottd_trainer.domain.TacticalSetup
 /** The user-facing name of a status, as used for dugout sections and messages. */
 val PlayerStatus.label: String
     get() = when (this) {
-        PlayerStatus.ON_FIELD -> "On field"
+        PlayerStatus.ON_FIELD -> "Standing"
         PlayerStatus.PRONE -> "Prone"
         PlayerStatus.STUNNED -> "Stunned"
         PlayerStatus.RESERVE -> "Reserves"

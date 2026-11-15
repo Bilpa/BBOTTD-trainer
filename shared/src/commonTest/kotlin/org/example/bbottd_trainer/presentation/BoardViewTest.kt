@@ -87,6 +87,42 @@ class BoardViewTest {
     }
 
     @Test
+    fun statusMenuOffersOnlyStatusesValidWhereThePlayerIs() {
+        val onPitch = listOf(PlayerStatus.ON_FIELD, PlayerStatus.PRONE, PlayerStatus.STUNNED)
+        val inDugout = listOf(
+            PlayerStatus.RESERVE,
+            PlayerStatus.KNOCKED_OUT,
+            PlayerStatus.CASUALTY,
+            PlayerStatus.SENT_OFF,
+        )
+
+        for (status in onPitch) assertEquals(onPitch, statusMenuOptions(status), "$status")
+        for (status in inDugout) assertEquals(inDugout, statusMenuOptions(status), "$status")
+    }
+
+    @Test
+    fun doubleClickStatusTogglesStandingAndProneAndIgnoresTheDugout() {
+        assertEquals(PlayerStatus.PRONE, doubleClickStatus(PlayerStatus.ON_FIELD))
+        assertEquals(PlayerStatus.ON_FIELD, doubleClickStatus(PlayerStatus.PRONE))
+        assertEquals(PlayerStatus.ON_FIELD, doubleClickStatus(PlayerStatus.STUNNED))
+        for (status in PlayerStatus.entries.filter { !it.isOnPitch }) {
+            assertEquals(null, doubleClickStatus(status), "$status")
+        }
+    }
+
+    @Test
+    fun tokensCarryThePlayersStatus() {
+        val prone = Player(PlayerId("h1"), "h1", 1, PlayerStatus.PRONE, BoardPosition(3, 13))
+        val result = setup(home = team(TeamId.HOME, prone))
+
+        assertEquals(PlayerStatus.PRONE, result.pitchTokens().getValue(BoardPosition(3, 13)).status)
+        assertEquals(
+            PlayerStatus.KNOCKED_OUT,
+            mixedSetup.dugoutSections(TeamId.AWAY).flatMap { it.players }.single().status,
+        )
+    }
+
+    @Test
     fun withNothingSelectedThereAreNoTargets() {
         val state = BoardUiState(setup = mixedSetup)
 

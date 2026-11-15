@@ -21,10 +21,14 @@ import androidx.compose.ui.unit.dp
 import org.example.bbottd_trainer.domain.Board
 import org.example.bbottd_trainer.domain.BoardPosition
 import org.example.bbottd_trainer.domain.PlayerId
+import org.example.bbottd_trainer.domain.PlayerStatus
 import org.example.bbottd_trainer.presentation.PlayerToken
 import org.example.bbottd_trainer.ui.TargetCellOverlay
 import org.example.bbottd_trainer.ui.ball.BallTokenView
 import org.example.bbottd_trainer.ui.player.PlayerTokenView
+import org.example.bbottd_trainer.ui.player.StatusMenu
+import org.example.bbottd_trainer.ui.player.onRightClick
+import org.example.bbottd_trainer.ui.player.playerClicks
 
 private val CentreFieldColor = Color(0xFF3F8A3F)
 private val WideZoneColor = Color(0xFF357535)
@@ -47,6 +51,12 @@ fun Pitch(
     isTarget: (BoardPosition) -> Boolean = { false },
     onCellClick: (BoardPosition) -> Unit = {},
     onBallClick: () -> Unit = {},
+    statusMenuPlayerId: PlayerId? = null,
+    onPlayerContextMenu: (PlayerId) -> Unit = {},
+    onPlayerDoubleClick: (PlayerId) -> Unit = {},
+    onEmptyCellRightClick: () -> Unit = {},
+    onStatusSelected: (PlayerId, PlayerStatus) -> Unit = { _, _ -> },
+    onStatusMenuDismiss: () -> Unit = {},
     markings: PitchMarkings = PitchMarkings.STANDARD,
 ) {
     BoxWithConstraints(modifier, contentAlignment = Alignment.TopCenter) {
@@ -73,6 +83,14 @@ fun Pitch(
                             isTarget = isTarget(position),
                             onClick = { onCellClick(position) },
                             onBallClick = onBallClick,
+                            statusMenuOpen = token != null && token.playerId == statusMenuPlayerId,
+                            onContextMenu = { token?.let { onPlayerContextMenu(it.playerId) } },
+                            onDoubleClick = { token?.let { onPlayerDoubleClick(it.playerId) } },
+                            onEmptyCellRightClick = onEmptyCellRightClick,
+                            onStatusSelected = { status ->
+                                token?.let { onStatusSelected(it.playerId, status) }
+                            },
+                            onStatusMenuDismiss = onStatusMenuDismiss,
                         )
                     }
                 }
@@ -93,7 +111,27 @@ private fun PitchCell(
     isTarget: Boolean,
     onClick: () -> Unit,
     onBallClick: () -> Unit,
+    statusMenuOpen: Boolean,
+    onContextMenu: () -> Unit,
+    onDoubleClick: () -> Unit,
+    onEmptyCellRightClick: () -> Unit,
+    onStatusSelected: (PlayerStatus) -> Unit,
+    onStatusMenuDismiss: () -> Unit,
 ) {
+    // A cell with a player also opens the player's status menu (right-click or long-press) and
+    // toggles standing/prone on a double-click.
+    val clicks = if (token != null) {
+        Modifier.playerClicks(
+            onClick = onClick,
+            onContextMenu = onContextMenu,
+            onDoubleClick = onDoubleClick,
+        )
+    } else {
+        // A right-click on an empty cell deselects.
+        Modifier
+            .onRightClick(onEmptyCellRightClick)
+            .clickable(onClick = onClick)
+    }
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -114,10 +152,17 @@ private fun PitchCell(
                     )
                 }
             }
-            .clickable(onClick = onClick),
+            .then(clicks),
     ) {
         if (token != null) {
             PlayerTokenView(token = token, size = size * 0.85f, selected = tokenSelected)
+            if (statusMenuOpen) {
+                StatusMenu(
+                    current = token.status,
+                    onSelect = onStatusSelected,
+                    onDismiss = onStatusMenuDismiss,
+                )
+            }
         }
         if (hasBall) {
             // The ball has its own click target, so it can be selected even on a player's cell.

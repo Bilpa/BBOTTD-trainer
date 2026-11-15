@@ -1,6 +1,8 @@
 package org.example.bbottd_trainer.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,7 +50,8 @@ private val SnackbarBottomOffset = 72.dp
  * The board editor screen: the home dugout left of the pitch and the away dugout right of it.
  *
  * Renders [state] and reports clicks, taps and keys through [onAction]; it never changes state
- * itself. Messages from the state holder are shown in a snackbar. Escape clears the selection.
+ * itself. Messages from the state holder are shown in a snackbar. Escape, a right-click on an
+ * empty pitch cell and a click outside the pitch clear the selection.
  */
 @Composable
 fun BoardScreen(
@@ -76,6 +79,12 @@ fun BoardScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
+            // Clicks that reach the background (outside the pitch and every other click target)
+            // deselect. No ripple: the background is not a visible control.
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { onAction(BoardAction.ClearSelection) }
             .focusRequester(focusRequester)
             .focusable()
             .onKeyEvent { event ->
@@ -133,6 +142,14 @@ fun BoardScreen(
                         isTarget = state::isCellTarget,
                         onCellClick = { onAction(BoardAction.CellClicked(it)) },
                         onBallClick = { onAction(BoardAction.BallClicked) },
+                        statusMenuPlayerId = state.statusMenuPlayerId,
+                        onPlayerContextMenu = { onAction(BoardAction.OpenStatusMenu(it)) },
+                        onPlayerDoubleClick = { onAction(BoardAction.PlayerDoubleClicked(it)) },
+                        onEmptyCellRightClick = { onAction(BoardAction.ClearSelection) },
+                        onStatusSelected = { playerId, status ->
+                            onAction(BoardAction.SetPlayerStatus(playerId, status))
+                        },
+                        onStatusMenuDismiss = { onAction(BoardAction.DismissStatusMenu) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
@@ -174,6 +191,12 @@ private fun TeamDugout(
         isTarget = state.isDugoutTarget(team.id),
         onSectionClick = { status -> onAction(BoardAction.DugoutSectionClicked(team.id, status)) },
         onPlayerClick = { playerId -> onAction(BoardAction.DugoutPlayerClicked(playerId)) },
+        statusMenuPlayerId = state.statusMenuPlayerId,
+        onPlayerContextMenu = { onAction(BoardAction.OpenStatusMenu(it)) },
+        onStatusSelected = { playerId, status ->
+            onAction(BoardAction.SetPlayerStatus(playerId, status))
+        },
+        onStatusMenuDismiss = { onAction(BoardAction.DismissStatusMenu) },
         modifier = Modifier
             .width(DugoutWidth)
             .fillMaxHeight(),

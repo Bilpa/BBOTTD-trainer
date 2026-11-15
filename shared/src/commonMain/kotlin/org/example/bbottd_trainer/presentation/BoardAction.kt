@@ -30,7 +30,25 @@ sealed interface BoardAction {
     /** The off-pitch ball area below the pitch was clicked. */
     data object OffPitchBallAreaClicked : BoardAction
 
-    /** Clear the selection, for example with Escape. */
+    /**
+     * A player was double-clicked. On the pitch this toggles standing and prone (a stunned player
+     * stands up); in the dugout it does nothing.
+     */
+    data class PlayerDoubleClicked(val playerId: PlayerId) : BoardAction
+
+    /** Open the status context menu on a player (right-click or long-press). */
+    data class OpenStatusMenu(val playerId: PlayerId) : BoardAction
+
+    /** Close the status context menu without choosing anything. */
+    data object DismissStatusMenu : BoardAction
+
+    /** A status was chosen in the context menu. */
+    data class SetPlayerStatus(val playerId: PlayerId, val status: PlayerStatus) : BoardAction
+
+    /**
+     * Clear the selection: Escape, a right-click on an empty pitch cell, or a click outside the
+     * pitch.
+     */
     data object ClearSelection : BoardAction
 
     /** The UI has shown the message with this [id]. */

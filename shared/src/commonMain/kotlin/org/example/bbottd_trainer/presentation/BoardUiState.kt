@@ -16,6 +16,8 @@ data class BoardUiState(
     val message: EditorMessage? = null,
     val isDirty: Boolean = false,
     val dugoutsVisible: Boolean = true,
+    /** The player whose status context menu is open, if any. */
+    val statusMenuPlayerId: PlayerId? = null,
 )
 
 /** What the user has selected, to be moved by clicking a target. */

@@ -20,7 +20,26 @@ data class PlayerToken(
     val teamId: TeamId,
     val teamName: String,
     val teamColor: TeamColor,
+    val status: PlayerStatus,
 )
+
+/**
+ * The status a double-click gives a player: standing ↔ prone, and a stunned player stands up.
+ * `null` for players in the dugout, where a double-click has no effect.
+ */
+fun doubleClickStatus(current: PlayerStatus): PlayerStatus? =
+    when (current) {
+        PlayerStatus.ON_FIELD -> PlayerStatus.PRONE
+        PlayerStatus.PRONE, PlayerStatus.STUNNED -> PlayerStatus.ON_FIELD
+        PlayerStatus.RESERVE, PlayerStatus.KNOCKED_OUT, PlayerStatus.CASUALTY, PlayerStatus.SENT_OFF -> null
+    }
+
+/**
+ * The statuses offered in a player's context menu: only those valid where the player is now
+ * (standing, prone or stunned on the pitch; the four dugout statuses in the dugout).
+ */
+fun statusMenuOptions(current: PlayerStatus): List<PlayerStatus> =
+    PlayerStatus.entries.filter { it.isOnPitch == current.isOnPitch }
 
 /** One group in a team's dugout, such as its reserves. */
 data class DugoutSection(
@@ -85,4 +104,5 @@ private fun Player.toToken(team: Team): PlayerToken =
         teamId = team.id,
         teamName = team.name,
         teamColor = team.color,
+        status = status,
     )

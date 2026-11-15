@@ -3,6 +3,7 @@ package org.example.bbottd_trainer.ui.dugout
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -27,7 +28,9 @@ import org.example.bbottd_trainer.presentation.DugoutSection
 import org.example.bbottd_trainer.presentation.label
 import org.example.bbottd_trainer.ui.SelectionColor
 import org.example.bbottd_trainer.ui.player.PlayerTokenView
+import org.example.bbottd_trainer.ui.player.StatusMenu
 import org.example.bbottd_trainer.ui.player.displayColor
+import org.example.bbottd_trainer.ui.player.playerClicks
 
 private val DugoutTokenSize = 30.dp
 private val SectionShape = RoundedCornerShape(6.dp)
@@ -49,6 +52,10 @@ fun Dugout(
     isTarget: Boolean = false,
     onSectionClick: (PlayerStatus) -> Unit = {},
     onPlayerClick: (PlayerId) -> Unit = {},
+    statusMenuPlayerId: PlayerId? = null,
+    onPlayerContextMenu: (PlayerId) -> Unit = {},
+    onStatusSelected: (PlayerId, PlayerStatus) -> Unit = { _, _ -> },
+    onStatusMenuDismiss: () -> Unit = {},
 ) {
     Surface(
         modifier = modifier,
@@ -95,12 +102,25 @@ fun Dugout(
                     ) {
                         for (token in section.players) {
                             key(token.playerId) {
-                                PlayerTokenView(
-                                    token = token,
-                                    size = DugoutTokenSize,
-                                    selected = token.playerId == selectedPlayerId,
-                                    modifier = Modifier.clickable { onPlayerClick(token.playerId) },
-                                )
+                                // The box anchors the status menu to the token.
+                                Box {
+                                    PlayerTokenView(
+                                        token = token,
+                                        size = DugoutTokenSize,
+                                        selected = token.playerId == selectedPlayerId,
+                                        modifier = Modifier.playerClicks(
+                                            onClick = { onPlayerClick(token.playerId) },
+                                            onContextMenu = { onPlayerContextMenu(token.playerId) },
+                                        ),
+                                    )
+                                    if (token.playerId == statusMenuPlayerId) {
+                                        StatusMenu(
+                                            current = token.status,
+                                            onSelect = { onStatusSelected(token.playerId, it) },
+                                            onDismiss = onStatusMenuDismiss,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

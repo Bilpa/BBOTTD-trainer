@@ -11,6 +11,7 @@ import org.example.bbottd_trainer.domain.PlayerStatus
 import org.example.bbottd_trainer.domain.SampleSetups
 import org.example.bbottd_trainer.domain.TacticalSetup
 import org.example.bbottd_trainer.domain.TeamId
+import org.example.bbottd_trainer.domain.changePlayerStatus
 import org.example.bbottd_trainer.domain.moveBall
 import org.example.bbottd_trainer.domain.movePlayerToCell
 import org.example.bbottd_trainer.domain.movePlayerToDugout
@@ -24,10 +25,13 @@ import org.example.bbottd_trainer.domain.movePlayerToDugout
  *
  * Select-then-click rules:
  * - Clicking a player selects them; clicking the selected player again deselects them.
- * - With a player selected, clicking an empty cell or a dugout section moves them there.
+ * - With a player selected, clicking an empty cell or a dugout section moves them there. After a
+ *   move to a cell the player stays selected; after a move into the dugout the selection clears.
  * - With the ball selected, clicking any cell (even a player's) moves the ball there, and clicking
- *   the off-pitch area takes it off the pitch.
- * - A successful move clears the selection; a failed move keeps it and shows a message.
+ *   the off-pitch area takes it off the pitch; both clear the selection.
+ * - A failed move keeps the selection and shows a message.
+ * - [BoardAction.ClearSelection] (Escape, right-clicking an empty cell, clicking outside the
+ *   pitch) deselects.
  *
  * @param dugoutsVisible whether the dugouts start visible. Android starts with them hidden because
  *   of limited screen space.
@@ -52,6 +56,18 @@ class BoardStateHolder(
             is BoardAction.DugoutSectionClicked -> onDugoutSectionClicked(action.team, action.status)
             BoardAction.BallClicked -> toggleBallSelection()
             BoardAction.OffPitchBallAreaClicked -> onOffPitchBallAreaClicked()
+            is BoardAction.PlayerDoubleClicked -> onPlayerDoubleClicked(action.playerId)
+            is BoardAction.OpenStatusMenu ->
+                mutableState.update { it.copy(statusMenuPlayerId = action.playerId) }
+            BoardAction.DismissStatusMenu -> closeStatusMenu()
+            is BoardAction.SetPlayerStatus -> {
+                closeStatusMenu()
+                // A status change is not a move, so the current selection is kept.
+                apply(
+                    state.value.setup.changePlayerStatus(action.playerId, action.status),
+                    clearSelection = false,
+                )
+            }
             BoardAction.ClearSelection -> select(null)
             is BoardAction.MessageShown -> mutableState.update {
                 if (it.message?.id == action.id) it.copy(message = null) else it
@@ -66,8 +82,12 @@ class BoardStateHolder(
         when {
             selection == Selection.Ball -> apply(current.setup.moveBall(position))
             occupant != null -> togglePlayerSelection(occupant.id)
+            // The player stays selected after moving to a cell, so they can be moved again.
             selection is Selection.Player ->
-                apply(current.setup.movePlayerToCell(selection.playerId, position))
+                apply(
+                    current.setup.movePlayerToCell(selection.playerId, position),
+                    clearSelection = false,
+                )
             current.setup.ball.position == position -> toggleBallSelection()
             // Nothing selected and an empty cell: nothing to do.
         }
@@ -92,6 +112,15 @@ class BoardStateHolder(
         }
     }
 
+    private fun onPlayerDoubleClicked(playerId: PlayerId) {
+        val setup = state.value.setup
+        val player = setup.findPlayer(playerId) ?: return
+        // In the dugout a double-click has no effect.
+        val newStatus = doubleClickStatus(player.status) ?: return
+        // A status change, not a move: the selection is kept.
+        apply(setup.changePlayerStatus(playerId, newStatus), clearSelection = false)
+    }
+
     private fun togglePlayerSelection(playerId: PlayerId) {
         val target = Selection.Player(playerId)
         select(if (state.value.selection == target) null else target)
@@ -105,13 +134,20 @@ class BoardStateHolder(
         mutableState.update { it.copy(selection = selection) }
     }
 
-    /** Applies an edit: on success, store the new setup and clear the selection; else explain. */
-    private fun apply(result: EditResult) {
+    private fun closeStatusMenu() {
+        mutableState.update { it.copy(statusMenuPlayerId = null) }
+    }
+
+    /**
+     * Applies an edit: on success, store the new setup (and clear the selection after a move);
+     * on failure, explain why in a message.
+     */
+    private fun apply(result: EditResult, clearSelection: Boolean = true) {
         when (result) {
             is EditResult.Success -> mutableState.update {
                 it.copy(
                     setup = result.setup,
-                    selection = null,
+                    selection = if (clearSelection) null else it.selection,
                     isDirty = it.isDirty || result.setup != it.setup,
                 )
             }

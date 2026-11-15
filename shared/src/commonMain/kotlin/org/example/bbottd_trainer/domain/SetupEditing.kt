@@ -38,6 +38,10 @@ sealed interface EditFailure {
  * A player coming from the dugout arrives as [PlayerStatus.ON_FIELD]; a player already on the
  * pitch keeps their status (`ON_FIELD`, `PRONE` or `STUNNED`). Moving a player to the cell they
  * already occupy succeeds without changes. The ball never blocks a move.
+ *
+ * A player on the pitch who shares a cell with the ball carries it: the ball moves to [target]
+ * with them. This is an editor convenience based only on the shared cell, whatever the player's
+ * status; it does not apply Blood Bowl possession rules.
  */
 fun TacticalSetup.movePlayerToCell(
     playerId: PlayerId,
@@ -52,7 +56,10 @@ fun TacticalSetup.movePlayerToCell(
     }
 
     val status = if (player.isOnPitch) player.status else PlayerStatus.ON_FIELD
-    return success(replacePlayer(player.copy(status = status, position = target)))
+    val moved = replacePlayer(player.copy(status = status, position = target))
+    // A dugout player has no position, so can never be carrying the ball.
+    val carriesBall = player.position != null && player.position == ball.position
+    return success(if (carriesBall) moved.copy(ball = BallState(target)) else moved)
 }
 
 /**
