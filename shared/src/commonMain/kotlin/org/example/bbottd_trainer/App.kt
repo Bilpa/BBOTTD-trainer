@@ -13,17 +13,23 @@ import androidx.compose.ui.tooling.preview.Preview
 import org.example.bbottd_trainer.presentation.BoardStateHolder
 import org.example.bbottd_trainer.ui.BoardScreen
 
-/** Shared root composable used by the Android, desktop and web entry points. */
+/**
+ * Shared root composable used by the Android, desktop and web entry points.
+ *
+ * @param dugoutsVisibleByDefault whether the dugouts start visible. Android passes `false` because
+ *   of limited screen space; the user can open them with the "Show dugouts" button.
+ */
 @Composable
 @Preview
-fun App() {
-    val stateHolder = remember { BoardStateHolder() }
+fun App(dugoutsVisibleByDefault: Boolean = true) {
+    val stateHolder = remember { BoardStateHolder(dugoutsVisible = dugoutsVisibleByDefault) }
     val state by stateHolder.state.collectAsState()
 
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             BoardScreen(
                 state = state,
+                onAction = stateHolder::onAction,
                 modifier = Modifier.safeContentPadding(),
             )
         }

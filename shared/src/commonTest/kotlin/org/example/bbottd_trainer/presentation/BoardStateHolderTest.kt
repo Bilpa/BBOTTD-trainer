@@ -9,6 +9,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class BoardStateHolderTest {
 
@@ -35,5 +36,36 @@ class BoardStateHolderTest {
         assertNull(state.selectedPlayerId)
         assertNull(state.selectedPosition)
         assertFalse(state.isDirty)
+    }
+
+    @Test
+    fun dugoutsAreVisibleByDefault() {
+        assertTrue(BoardStateHolder().state.value.dugoutsVisible)
+    }
+
+    @Test
+    fun dugoutsCanStartHidden() {
+        assertFalse(BoardStateHolder(dugoutsVisible = false).state.value.dugoutsVisible)
+    }
+
+    @Test
+    fun setDugoutsVisibleShowsAndHidesThem() {
+        val holder = BoardStateHolder(dugoutsVisible = false)
+
+        holder.onAction(BoardAction.SetDugoutsVisible(true))
+        assertTrue(holder.state.value.dugoutsVisible)
+
+        holder.onAction(BoardAction.SetDugoutsVisible(false))
+        assertFalse(holder.state.value.dugoutsVisible)
+    }
+
+    @Test
+    fun showingDugoutsDoesNotChangeTheSetupOrMarkItDirty() {
+        val holder = BoardStateHolder(dugoutsVisible = false)
+
+        holder.onAction(BoardAction.SetDugoutsVisible(true))
+
+        assertEquals(SampleSetups.initial, holder.state.value.setup)
+        assertFalse(holder.state.value.isDirty)
     }
 }

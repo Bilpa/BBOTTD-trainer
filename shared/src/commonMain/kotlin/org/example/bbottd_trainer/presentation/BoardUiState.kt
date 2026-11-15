@@ -15,4 +15,5 @@ data class BoardUiState(
     val selectedPlayerId: PlayerId? = null,
     val selectedPosition: BoardPosition? = null,
     val isDirty: Boolean = false,
+    val dugoutsVisible: Boolean = true,
 )

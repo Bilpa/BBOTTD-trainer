@@ -1,10 +1,10 @@
 package org.example.bbottd_trainer.ui.pitch
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,6 +19,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.example.bbottd_trainer.domain.Board
 import org.example.bbottd_trainer.domain.BoardPosition
+import org.example.bbottd_trainer.presentation.PlayerToken
+import org.example.bbottd_trainer.ui.ball.BallTokenView
+import org.example.bbottd_trainer.ui.player.PlayerTokenView
 
 private val CentreFieldColor = Color(0xFF3F8A3F)
 private val WideZoneColor = Color(0xFF357535)
@@ -33,6 +36,8 @@ private val LineOfScrimmageColor = Color.White
 @Composable
 fun Pitch(
     modifier: Modifier = Modifier,
+    tokens: Map<BoardPosition, PlayerToken> = emptyMap(),
+    ballPosition: BoardPosition? = null,
     markings: PitchMarkings = PitchMarkings.STANDARD,
 ) {
     BoxWithConstraints(modifier, contentAlignment = Alignment.TopCenter) {
@@ -46,10 +51,13 @@ fun Pitch(
             for (y in Board.rows) {
                 Row {
                     for (x in Board.columns) {
+                        val position = BoardPosition(x, y)
                         PitchCell(
-                            area = markings.areaOf(BoardPosition(x, y)),
+                            area = markings.areaOf(position),
                             lineOfScrimmageBelow = markings.hasLineOfScrimmageBelow(y),
                             size = cellSize,
+                            token = tokens[position],
+                            hasBall = position == ballPosition,
                         )
                     }
                 }
@@ -63,8 +71,11 @@ private fun PitchCell(
     area: PitchArea,
     lineOfScrimmageBelow: Boolean,
     size: Dp,
+    token: PlayerToken?,
+    hasBall: Boolean,
 ) {
-    Spacer(
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(size)
             .background(area.color)
@@ -82,7 +93,22 @@ private fun PitchCell(
                     )
                 }
             },
-    )
+    ) {
+        if (token != null) {
+            PlayerTokenView(token = token, size = size * 0.85f)
+        }
+        if (hasBall) {
+            if (token == null) {
+                BallTokenView(size = size * 0.55f)
+            } else {
+                // Shares the cell with a player: smaller, in the corner, so both stay visible.
+                BallTokenView(
+                    size = size * 0.4f,
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                )
+            }
+        }
+    }
 }
 
 private val PitchArea.color: Color
