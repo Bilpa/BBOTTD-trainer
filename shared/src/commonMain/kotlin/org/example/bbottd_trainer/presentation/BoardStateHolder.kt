@@ -54,6 +54,7 @@ class BoardStateHolder(
             is BoardAction.CellClicked -> onCellClicked(action.position)
             is BoardAction.DugoutPlayerClicked -> togglePlayerSelection(action.playerId)
             is BoardAction.DugoutSectionClicked -> onDugoutSectionClicked(action.team, action.status)
+            is BoardAction.Drop -> onDrop(action.item, action.target)
             BoardAction.BallClicked -> toggleBallSelection()
             BoardAction.OffPitchBallAreaClicked -> onOffPitchBallAreaClicked()
             is BoardAction.PlayerDoubleClicked -> onPlayerDoubleClicked(action.playerId)
@@ -112,6 +113,30 @@ class BoardStateHolder(
         }
     }
 
+    /**
+     * Applies a drag-and-drop with the same operations and messages as select-then-click. A player
+     * dropped on a cell ends up selected (as after a click-move); other drops clear the selection.
+     */
+    private fun onDrop(item: DragItem, target: DropTarget) {
+        val setup = state.value.setup
+        when (item) {
+            is DragItem.Player -> when (target) {
+                is DropTarget.Cell -> {
+                    val moved = apply(setup.movePlayerToCell(item.playerId, target.position))
+                    if (moved) select(Selection.Player(item.playerId))
+                }
+                is DropTarget.DugoutSection ->
+                    apply(setup.movePlayerToDugout(item.playerId, target.team, target.status))
+                DropTarget.OffPitchBallArea -> showMessage("Only the ball can be placed here.")
+            }
+            DragItem.Ball -> when (target) {
+                is DropTarget.Cell -> apply(setup.moveBall(target.position))
+                DropTarget.OffPitchBallArea -> apply(setup.moveBall(null))
+                is DropTarget.DugoutSection -> showMessage("The ball cannot be put in a dugout.")
+            }
+        }
+    }
+
     private fun onPlayerDoubleClicked(playerId: PlayerId) {
         val setup = state.value.setup
         val player = setup.findPlayer(playerId) ?: return
@@ -140,20 +165,25 @@ class BoardStateHolder(
 
     /**
      * Applies an edit: on success, store the new setup (and clear the selection after a move);
-     * on failure, explain why in a message.
+     * on failure, explain why in a message. Returns whether the edit succeeded.
      */
-    private fun apply(result: EditResult, clearSelection: Boolean = true) {
+    private fun apply(result: EditResult, clearSelection: Boolean = true): Boolean =
         when (result) {
-            is EditResult.Success -> mutableState.update {
-                it.copy(
-                    setup = result.setup,
-                    selection = if (clearSelection) null else it.selection,
-                    isDirty = it.isDirty || result.setup != it.setup,
-                )
+            is EditResult.Success -> {
+                mutableState.update {
+                    it.copy(
+                        setup = result.setup,
+                        selection = if (clearSelection) null else it.selection,
+                        isDirty = it.isDirty || result.setup != it.setup,
+                    )
+                }
+                true
             }
-            is EditResult.Failure -> showMessage(result.reason.describe(state.value.setup))
+            is EditResult.Failure -> {
+                showMessage(result.reason.describe(state.value.setup))
+                false
+            }
         }
-    }
 
     private fun showMessage(text: String) {
         val message = EditorMessage(id = nextMessageId++, text = text)

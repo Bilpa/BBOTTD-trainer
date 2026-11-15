@@ -19,14 +19,23 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import org.example.bbottd_trainer.domain.PlayerId
 import org.example.bbottd_trainer.domain.PlayerStatus
 import org.example.bbottd_trainer.domain.TeamColor
+import org.example.bbottd_trainer.domain.TeamId
+import org.example.bbottd_trainer.presentation.DragItem
+import org.example.bbottd_trainer.presentation.DropTarget
 import org.example.bbottd_trainer.presentation.DugoutSection
 import org.example.bbottd_trainer.presentation.label
+import org.example.bbottd_trainer.ui.DRAGGED_ORIGINAL_ALPHA
+import org.example.bbottd_trainer.ui.InvalidDropColor
 import org.example.bbottd_trainer.ui.SelectionColor
+import org.example.bbottd_trainer.ui.drag.BoardDragState
+import org.example.bbottd_trainer.ui.drag.dragSource
+import org.example.bbottd_trainer.ui.drag.dugoutSectionDropArea
 import org.example.bbottd_trainer.ui.player.PlayerTokenView
 import org.example.bbottd_trainer.ui.player.StatusMenu
 import org.example.bbottd_trainer.ui.player.displayColor
@@ -38,12 +47,15 @@ private val SectionShape = RoundedCornerShape(6.dp)
 /**
  * One team's dugout: a section per dugout status, each listing that team's players.
  *
- * Each section is a click target (moving the selected player into it), highlighted while
- * [isTarget]; each token can be clicked to select that player.
+ * Each section is a click and drop target (moving the selected or dragged player into it),
+ * highlighted while [isTarget]; each token can be clicked to select that player or dragged.
+ * While dragging, the section under the pointer ([hoveredStatus]) gets a cyan border if the drop
+ * would be accepted ([hoverValid]) and a red one if not.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun Dugout(
+    teamId: TeamId,
     teamName: String,
     teamColor: TeamColor,
     sections: List<DugoutSection>,
@@ -56,6 +68,11 @@ fun Dugout(
     onPlayerContextMenu: (PlayerId) -> Unit = {},
     onStatusSelected: (PlayerId, PlayerStatus) -> Unit = { _, _ -> },
     onStatusMenuDismiss: () -> Unit = {},
+    dragState: BoardDragState? = null,
+    draggedPlayerId: PlayerId? = null,
+    hoveredStatus: PlayerStatus? = null,
+    hoverValid: Boolean = false,
+    onDrop: (DragItem, DropTarget) -> Unit = { _, _ -> },
 ) {
     Surface(
         modifier = modifier,
@@ -74,15 +91,28 @@ fun Dugout(
                 color = teamColor.displayColor,
             )
             for (section in sections) {
+                val hovered = section.status == hoveredStatus
+                val (borderWidth, borderColor) = when {
+                    hovered && hoverValid -> 3.dp to SelectionColor
+                    hovered -> 3.dp to InvalidDropColor
+                    isTarget -> 2.dp to SelectionColor
+                    else -> 1.dp to MaterialTheme.colorScheme.outlineVariant
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(SectionShape)
-                        .border(
-                            width = if (isTarget) 2.dp else 1.dp,
-                            color = if (isTarget) SelectionColor else MaterialTheme.colorScheme.outlineVariant,
-                            shape = SectionShape,
+                        .then(
+                            if (dragState != null) {
+                                Modifier.dugoutSectionDropArea(
+                                    dragState,
+                                    DropTarget.DugoutSection(teamId, section.status),
+                                )
+                            } else {
+                                Modifier
+                            },
                         )
+                        .clip(SectionShape)
+                        .border(width = borderWidth, color = borderColor, shape = SectionShape)
                         .clickable { onSectionClick(section.status) }
                         .padding(8.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -104,14 +134,28 @@ fun Dugout(
                             key(token.playerId) {
                                 // The box anchors the status menu to the token.
                                 Box {
+                                    val dragged = token.playerId == draggedPlayerId
                                     PlayerTokenView(
                                         token = token,
                                         size = DugoutTokenSize,
                                         selected = token.playerId == selectedPlayerId,
-                                        modifier = Modifier.playerClicks(
-                                            onClick = { onPlayerClick(token.playerId) },
-                                            onContextMenu = { onPlayerContextMenu(token.playerId) },
-                                        ),
+                                        modifier = Modifier
+                                            .then(if (dragged) Modifier.alpha(DRAGGED_ORIGINAL_ALPHA) else Modifier)
+                                            .then(
+                                                if (dragState != null) {
+                                                    Modifier.dragSource(
+                                                        dragState,
+                                                        DragItem.Player(token.playerId),
+                                                        onDrop,
+                                                    )
+                                                } else {
+                                                    Modifier
+                                                },
+                                            )
+                                            .playerClicks(
+                                                onClick = { onPlayerClick(token.playerId) },
+                                                onContextMenu = { onPlayerContextMenu(token.playerId) },
+                                            ),
                                     )
                                     if (token.playerId == statusMenuPlayerId) {
                                         StatusMenu(

@@ -24,6 +24,12 @@ sealed interface BoardAction {
     /** A dugout section (outside its player tokens) was clicked. */
     data class DugoutSectionClicked(val team: TeamId, val status: PlayerStatus) : BoardAction
 
+    /**
+     * A dragged player or ball was dropped on a target. Applied with the same editing operations
+     * as select-then-click.
+     */
+    data class Drop(val item: DragItem, val target: DropTarget) : BoardAction
+
     /** The ball token itself was clicked, on the pitch or in the off-pitch area. */
     data object BallClicked : BoardAction
 

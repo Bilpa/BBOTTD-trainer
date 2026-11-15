@@ -20,7 +20,8 @@ What works now:
   knocked out, casualties and sent off. The dugouts can be hidden; on Android they start hidden.
 - A ball marker that can be placed on any cell, including a player's. While the ball is off the pitch it
   sits in an area below the pitch.
-- Moving players and the ball by selecting them and then clicking a destination (see below).
+- Moving players and the ball by dragging and dropping them, or by selecting them and then clicking a
+  destination (see below). Both work with a mouse and with touch.
 - Player statuses: on the pitch a player is standing, prone or stunned; in the dugout they are a reserve,
   knocked out, a casualty or sent off. Prone players are shown darker; stunned players darker with a yellow
   border.
@@ -29,7 +30,14 @@ The app starts with the initial sample setup: all 32 players in their dugouts an
 
 ## Using the editor
 
-Moving players and the ball:
+Moving players and the ball by dragging:
+
+- Drag a player (on the pitch or in a dugout) or the ball onto a pitch cell, a section of the player's own
+  dugout, or (for the ball) the area below the pitch. While dragging, valid places are highlighted and the
+  place under the pointer shows a cyan border if the drop is allowed, or a red one if not. Dropping
+  anywhere else cancels the drag.
+
+Moving players and the ball by selecting and clicking:
 
 1. Click a player (on the pitch or in a dugout) or the ball to select it. It gets a cyan ring, and the
    places it can go are highlighted.
@@ -43,8 +51,8 @@ Moving players and the ball:
 
 A player coming from the dugout arrives on the pitch standing; a player moved within the pitch keeps their
 status. A player standing on the same cell as the ball carries it with them when moved to another pitch
-cell. If a move is not possible, for example into the other team's dugout, a message explains why and
-nothing changes.
+cell. If a move is not possible, for example onto another player or into the other team's dugout, a message
+explains why and nothing changes. Both ways of moving follow the same rules.
 
 Setting a player's status:
 
@@ -55,7 +63,6 @@ Setting a player's status:
 
 ## Planned features
 
-- Drag-and-drop as an alternative to select-then-click.
 - Resetting to the sample setup.
 - Saving and reopening setups locally. There is no backend, account or cloud sync.
 - Later: undo/redo, training scenarios with instructions and annotations, and optional rule-aware analysis.
@@ -76,7 +83,7 @@ Setting a player's status:
 | Desktop | JVM | Built, tested and run |
 | Web (primary) | Kotlin/Wasm (`wasmJs`) | Built, tested and run in a browser |
 | Web (fallback) | Kotlin/JS (`js`) | Compiled after every change; tested and run in a browser at each milestone |
-| Android | Android | Build only: the app and host tests are built, but it is not run on a device or emulator yet |
+| Android | Android | Built and host tests run after every change; touch input checked by hand on an emulator |
 
 ## Project structure
 

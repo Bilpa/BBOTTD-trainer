@@ -417,6 +417,109 @@ class BoardStateHolderTest {
         assertEquals(Selection.Player(PlayerId("h2")), holder.current.selection)
     }
 
+    // --- Drag and drop ---------------------------------------------------------------------
+
+    private fun drop(item: DragItem, target: DropTarget) = BoardAction.Drop(item, target)
+
+    private val dragH1 = DragItem.Player(PlayerId("h1"))
+    private val dragH2 = DragItem.Player(PlayerId("h2"))
+
+    @Test
+    fun droppingADugoutPlayerOnAnEmptyCellMovesThemThereAndSelectsThem() {
+        val holder = holder()
+
+        holder.click(drop(dragH2, DropTarget.Cell(BoardPosition(3, 20))))
+
+        assertEquals(BoardPosition(3, 20), holder.positionOf("h2"))
+        assertEquals(PlayerStatus.ON_FIELD, holder.statusOf("h2"))
+        assertEquals(Selection.Player(PlayerId("h2")), holder.current.selection)
+        assertTrue(holder.current.isDirty)
+    }
+
+    @Test
+    fun droppingOntoAnotherPlayerIsRejectedAsOccupied() {
+        val holder = holder()
+
+        holder.click(drop(dragH1, DropTarget.Cell(BoardPosition(7, 12))))
+
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertEquals("Cell (7, 12) is occupied by a1.", holder.current.message?.text)
+        assertNull(holder.current.selection)
+    }
+
+    @Test
+    fun droppingAPlayerOnADugoutSectionSetsThatStatus() {
+        val holder = holder()
+
+        holder.click(drop(dragH1, DropTarget.DugoutSection(TeamId.HOME, PlayerStatus.SENT_OFF)))
+
+        assertEquals(PlayerStatus.SENT_OFF, holder.statusOf("h1"))
+        assertNull(holder.positionOf("h1"))
+    }
+
+    @Test
+    fun droppingAPlayerOnTheOtherTeamsDugoutIsRejected() {
+        val holder = holder()
+
+        holder.click(drop(dragH1, DropTarget.DugoutSection(TeamId.AWAY, PlayerStatus.RESERVE)))
+
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertEquals("h1 can only go to the HOME dugout.", holder.current.message?.text)
+    }
+
+    @Test
+    fun droppingAPlayerOnTheOffPitchBallAreaIsRejected() {
+        val holder = holder()
+
+        holder.click(drop(dragH1, DropTarget.OffPitchBallArea))
+
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertEquals("Only the ball can be placed here.", holder.current.message?.text)
+    }
+
+    @Test
+    fun droppingTheBallMovesItOntoAnyCellOrBackOffThePitch() {
+        val holder = holder()
+
+        holder.click(drop(DragItem.Ball, DropTarget.Cell(BoardPosition(7, 13))))
+        assertEquals(BoardPosition(7, 13), holder.current.setup.ball.position)
+
+        holder.click(drop(DragItem.Ball, DropTarget.OffPitchBallArea))
+        assertNull(holder.current.setup.ball.position)
+    }
+
+    @Test
+    fun droppingTheBallOnADugoutIsRejected() {
+        val holder = holder()
+
+        holder.click(drop(DragItem.Ball, DropTarget.DugoutSection(TeamId.HOME, PlayerStatus.RESERVE)))
+
+        assertEquals("The ball cannot be put in a dugout.", holder.current.message?.text)
+        assertNull(holder.current.setup.ball.position)
+    }
+
+    @Test
+    fun droppingAPlayerCarryingTheBallTakesTheBallAlong() {
+        val holder = holder(start.copy(ball = BallState(BoardPosition(7, 13))))
+
+        holder.click(drop(dragH1, DropTarget.Cell(BoardPosition(2, 2))))
+
+        assertEquals(BoardPosition(2, 2), holder.current.setup.ball.position)
+    }
+
+    @Test
+    fun dragAndDropAndSelectThenClickGiveTheSameSetup() {
+        val viaDrop = holder().apply { click(drop(dragH2, DropTarget.Cell(BoardPosition(3, 20)))) }
+        val viaClick = holder().apply {
+            click(
+                BoardAction.DugoutPlayerClicked(PlayerId("h2")),
+                BoardAction.CellClicked(BoardPosition(3, 20)),
+            )
+        }
+
+        assertEquals(viaClick.current.setup, viaDrop.current.setup)
+    }
+
     // --- Messages and unsaved changes ------------------------------------------------------
 
     @Test

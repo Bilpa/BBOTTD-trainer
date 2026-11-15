@@ -50,6 +50,13 @@ data class DugoutSection(
 /** Dugout sections in display order: every status that is not an on-pitch status. */
 val DUGOUT_STATUSES: List<PlayerStatus> = PlayerStatus.entries.filter { !it.isOnPitch }
 
+/** The token for one player, or `null` if no player has this ID. */
+fun TacticalSetup.tokenOf(playerId: PlayerId): PlayerToken? {
+    val teamId = teamOf(playerId) ?: return null
+    val team = team(teamId)
+    return team.players.firstOrNull { it.id == playerId }?.toToken(team)
+}
+
 /** Tokens of all players on the pitch, by the cell they occupy. */
 fun TacticalSetup.pitchTokens(): Map<BoardPosition, PlayerToken> =
     listOf(home, away)

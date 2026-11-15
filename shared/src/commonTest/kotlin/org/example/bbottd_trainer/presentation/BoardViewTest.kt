@@ -16,6 +16,7 @@ import org.example.bbottd_trainer.domain.team
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class BoardViewTest {
@@ -120,6 +121,32 @@ class BoardViewTest {
             PlayerStatus.KNOCKED_OUT,
             mixedSetup.dugoutSections(TeamId.AWAY).flatMap { it.players }.single().status,
         )
+    }
+
+    @Test
+    fun validDropsFollowTheEditingRules() {
+        val state = BoardUiState(setup = mixedSetup)
+        val h1 = DragItem.Player(PlayerId("h1"))
+
+        assertTrue(state.isValidDrop(h1, DropTarget.Cell(BoardPosition(0, 0))), "empty cell")
+        assertTrue(state.isValidDrop(h1, DropTarget.Cell(BoardPosition(7, 13))), "own cell")
+        assertFalse(state.isValidDrop(h1, DropTarget.Cell(BoardPosition(7, 12))), "occupied")
+        assertTrue(state.isValidDrop(h1, DropTarget.DugoutSection(TeamId.HOME, PlayerStatus.CASUALTY)))
+        assertFalse(state.isValidDrop(h1, DropTarget.DugoutSection(TeamId.AWAY, PlayerStatus.RESERVE)))
+        assertFalse(state.isValidDrop(h1, DropTarget.OffPitchBallArea))
+
+        assertTrue(state.isValidDrop(DragItem.Ball, DropTarget.Cell(BoardPosition(7, 12))), "ball on a player")
+        assertTrue(state.isValidDrop(DragItem.Ball, DropTarget.OffPitchBallArea))
+        assertFalse(state.isValidDrop(DragItem.Ball, DropTarget.DugoutSection(TeamId.HOME, PlayerStatus.RESERVE)))
+    }
+
+    @Test
+    fun tokenOfFindsAnyPlayerWithTheirTeam() {
+        val token = assertNotNull(mixedSetup.tokenOf(PlayerId("a2")))
+
+        assertEquals(TeamId.AWAY, token.teamId)
+        assertEquals(PlayerStatus.KNOCKED_OUT, token.status)
+        assertEquals(null, mixedSetup.tokenOf(PlayerId("nobody")))
     }
 
     @Test
