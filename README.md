@@ -9,8 +9,8 @@ tackle zones, blocks or dice. Optional rule-aware analysis may be added later, s
 
 ## Status
 
-Early development. The project foundation is in place, and the app currently shows the Compose
-Multiplatform starter screen. No editor functionality is implemented yet.
+Early development. The project foundation is in place, and the app currently shows a placeholder screen.
+No editor functionality or tests are implemented yet.
 
 ## Planned features
 
