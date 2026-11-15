@@ -28,8 +28,8 @@ data class DugoutSection(
     val players: List<PlayerToken>,
 )
 
-/** Dugout sections in display order: every status except [PlayerStatus.ON_FIELD]. */
-val DUGOUT_STATUSES: List<PlayerStatus> = PlayerStatus.entries.filter { it != PlayerStatus.ON_FIELD }
+/** Dugout sections in display order: every status that is not an on-pitch status. */
+val DUGOUT_STATUSES: List<PlayerStatus> = PlayerStatus.entries.filter { !it.isOnPitch }
 
 /** Tokens of all players on the pitch, by the cell they occupy. */
 fun TacticalSetup.pitchTokens(): Map<BoardPosition, PlayerToken> =

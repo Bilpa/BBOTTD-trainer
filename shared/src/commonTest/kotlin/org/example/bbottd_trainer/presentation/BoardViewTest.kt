@@ -84,6 +84,18 @@ class BoardViewTest {
     }
 
     @Test
+    fun proneAndStunnedPlayersAreOnThePitchNotInTheDugout() {
+        val prone = Player(PlayerId("h1"), "h1", 1, PlayerStatus.PRONE, BoardPosition(3, 13))
+        val stunned = Player(PlayerId("a1"), "a1", 1, PlayerStatus.STUNNED, BoardPosition(3, 12))
+        val result = setup(home = team(TeamId.HOME, prone), away = team(TeamId.AWAY, stunned))
+
+        assertEquals(setOf(BoardPosition(3, 13), BoardPosition(3, 12)), result.pitchTokens().keys)
+        val dugoutIds = (result.dugoutSections(TeamId.HOME) + result.dugoutSections(TeamId.AWAY))
+            .flatMap { it.players }
+        assertTrue(dugoutIds.isEmpty())
+    }
+
+    @Test
     fun initialSampleShowsAll16PlayersOfEachTeamAsReservesAndAnEmptyPitch() {
         val sample = SampleSetups.initial
 

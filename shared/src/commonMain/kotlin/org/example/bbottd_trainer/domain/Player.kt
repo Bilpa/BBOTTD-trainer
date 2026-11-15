@@ -1,22 +1,28 @@
 package org.example.bbottd_trainer.domain
 
 /**
- * Where a player is. `ON_FIELD` means on the pitch; every other status means the player is in
- * their own team's dugout. These are editor categories, not a rules implementation.
+ * A player's status, which also decides where they are. These are editor categories, not a rules
+ * implementation.
+ *
+ * @property isOnPitch `true` for the statuses of a player on the pitch (`ON_FIELD`, `PRONE`,
+ *   `STUNNED`), who must have a position. Every other status puts the player in their own team's
+ *   dugout, with no position.
  */
-enum class PlayerStatus {
-    ON_FIELD,
-    RESERVE,
-    KNOCKED_OUT,
-    CASUALTY,
-    SENT_OFF,
+enum class PlayerStatus(val isOnPitch: Boolean) {
+    ON_FIELD(isOnPitch = true),
+    PRONE(isOnPitch = true),
+    STUNNED(isOnPitch = true),
+    RESERVE(isOnPitch = false),
+    KNOCKED_OUT(isOnPitch = false),
+    CASUALTY(isOnPitch = false),
+    SENT_OFF(isOnPitch = false),
 }
 
 /**
  * A player in a tactical setup.
  *
- * Invariant: [position] is non-null and on the pitch exactly when [status] is
- * [PlayerStatus.ON_FIELD]; otherwise the player is in the dugout and [position] is `null`.
+ * Invariant: [position] is non-null and on the pitch exactly when [status] is an on-pitch status
+ * ([PlayerStatus.isOnPitch]); otherwise the player is in the dugout and [position] is `null`.
  * The player's team is the [Team] that owns them, so it is not stored here.
  */
 data class Player(
@@ -27,8 +33,8 @@ data class Player(
     val position: BoardPosition?,
 ) {
     init {
-        if (status == PlayerStatus.ON_FIELD) {
-            requireNotNull(position) { "Player ${id.value} is ON_FIELD but has no position." }
+        if (status.isOnPitch) {
+            requireNotNull(position) { "Player ${id.value} is $status but has no position." }
             require(Board.contains(position)) {
                 "Player ${id.value} is at $position, which is outside the pitch."
             }
@@ -40,5 +46,5 @@ data class Player(
     }
 
     val isOnPitch: Boolean
-        get() = status == PlayerStatus.ON_FIELD
+        get() = status.isOnPitch
 }

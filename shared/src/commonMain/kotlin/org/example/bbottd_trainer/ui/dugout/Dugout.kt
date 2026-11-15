@@ -71,6 +71,8 @@ fun Dugout(
 private val PlayerStatus.label: String
     get() = when (this) {
         PlayerStatus.ON_FIELD -> "On field"
+        PlayerStatus.PRONE -> "Prone"
+        PlayerStatus.STUNNED -> "Stunned"
         PlayerStatus.RESERVE -> "Reserves"
         PlayerStatus.KNOCKED_OUT -> "Knocked out"
         PlayerStatus.CASUALTY -> "Casualties"
