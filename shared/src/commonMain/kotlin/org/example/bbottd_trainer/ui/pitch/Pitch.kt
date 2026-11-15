@@ -1,6 +1,7 @@
 package org.example.bbottd_trainer.ui.pitch
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -19,9 +21,23 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.example.bbottd_trainer.domain.Board
 import org.example.bbottd_trainer.domain.BoardPosition
+import org.example.bbottd_trainer.domain.PlayerId
+import org.example.bbottd_trainer.domain.PlayerStatus
+import org.example.bbottd_trainer.presentation.DragItem
+import org.example.bbottd_trainer.presentation.DropTarget
 import org.example.bbottd_trainer.presentation.PlayerToken
+import org.example.bbottd_trainer.ui.DRAGGED_ORIGINAL_ALPHA
+import org.example.bbottd_trainer.ui.InvalidDropColor
+import org.example.bbottd_trainer.ui.SelectionColor
+import org.example.bbottd_trainer.ui.TargetCellOverlay
 import org.example.bbottd_trainer.ui.ball.BallTokenView
+import org.example.bbottd_trainer.ui.drag.BoardDragState
+import org.example.bbottd_trainer.ui.drag.dragSource
+import org.example.bbottd_trainer.ui.drag.pitchDropArea
 import org.example.bbottd_trainer.ui.player.PlayerTokenView
+import org.example.bbottd_trainer.ui.player.StatusMenu
+import org.example.bbottd_trainer.ui.player.onRightClick
+import org.example.bbottd_trainer.ui.player.playerClicks
 
 private val CentreFieldColor = Color(0xFF3F8A3F)
 private val WideZoneColor = Color(0xFF357535)
@@ -30,34 +46,87 @@ private val GridLineColor = Color(0x40FFFFFF)
 private val LineOfScrimmageColor = Color.White
 
 /**
+ * Drag-and-drop feedback for the pitch: which cell the pointer is over (and whether a drop there
+ * would be accepted), and which item is being dragged, so its original can be faded.
+ */
+data class PitchDragFeedback(
+    val hoveredCell: BoardPosition? = null,
+    val hoverValid: Boolean = false,
+    val draggedItem: DragItem? = null,
+)
+
+/**
  * The 15 × 26 pitch, drawn north (`y = 0`) at the top, with square cells scaled to fit the
- * available space.
+ * available space. Every cell can be clicked or tapped; [isTarget] cells are highlighted as places
+ * the current selection can be moved to. Players and the ball can be dragged when [dragState] is
+ * given; drops are reported through [onDrop].
  */
 @Composable
 fun Pitch(
     modifier: Modifier = Modifier,
     tokens: Map<BoardPosition, PlayerToken> = emptyMap(),
     ballPosition: BoardPosition? = null,
+    selectedPlayerId: PlayerId? = null,
+    ballSelected: Boolean = false,
+    isTarget: (BoardPosition) -> Boolean = { false },
+    onCellClick: (BoardPosition) -> Unit = {},
+    onBallClick: () -> Unit = {},
+    statusMenuPlayerId: PlayerId? = null,
+    onPlayerContextMenu: (PlayerId) -> Unit = {},
+    onPlayerDoubleClick: (PlayerId) -> Unit = {},
+    onEmptyCellRightClick: () -> Unit = {},
+    onStatusSelected: (PlayerId, PlayerStatus) -> Unit = { _, _ -> },
+    onStatusMenuDismiss: () -> Unit = {},
+    dragState: BoardDragState? = null,
+    dragFeedback: PitchDragFeedback = PitchDragFeedback(),
+    onDrop: (DragItem, DropTarget) -> Unit = { _, _ -> },
     markings: PitchMarkings = PitchMarkings.STANDARD,
 ) {
     BoxWithConstraints(modifier, contentAlignment = Alignment.TopCenter) {
         val cellSize = minOf(maxWidth / Board.WIDTH, maxHeight / Board.HEIGHT)
 
         Column(
-            modifier = Modifier.semantics {
-                contentDescription = "Pitch, ${Board.WIDTH} columns by ${Board.HEIGHT} rows"
-            },
+            modifier = Modifier
+                .then(if (dragState != null) Modifier.pitchDropArea(dragState) else Modifier)
+                .semantics {
+                    contentDescription = "Pitch, ${Board.WIDTH} columns by ${Board.HEIGHT} rows"
+                },
         ) {
             for (y in Board.rows) {
                 Row {
                     for (x in Board.columns) {
                         val position = BoardPosition(x, y)
+                        val token = tokens[position]
+                        val hovered = dragFeedback.hoveredCell == position
                         PitchCell(
                             area = markings.areaOf(position),
                             lineOfScrimmageBelow = markings.hasLineOfScrimmageBelow(y),
                             size = cellSize,
-                            token = tokens[position],
+                            token = token,
+                            tokenSelected = token != null && token.playerId == selectedPlayerId,
+                            tokenDragged = token != null &&
+                                dragFeedback.draggedItem == DragItem.Player(token.playerId),
                             hasBall = position == ballPosition,
+                            ballSelected = ballSelected,
+                            ballDragged = dragFeedback.draggedItem == DragItem.Ball,
+                            isTarget = isTarget(position),
+                            hover = when {
+                                !hovered -> CellHover.NONE
+                                dragFeedback.hoverValid -> CellHover.VALID
+                                else -> CellHover.INVALID
+                            },
+                            onClick = { onCellClick(position) },
+                            onBallClick = onBallClick,
+                            statusMenuOpen = token != null && token.playerId == statusMenuPlayerId,
+                            onContextMenu = { token?.let { onPlayerContextMenu(it.playerId) } },
+                            onDoubleClick = { token?.let { onPlayerDoubleClick(it.playerId) } },
+                            onEmptyCellRightClick = onEmptyCellRightClick,
+                            onStatusSelected = { status ->
+                                token?.let { onStatusSelected(it.playerId, status) }
+                            },
+                            onStatusMenuDismiss = onStatusMenuDismiss,
+                            dragState = dragState,
+                            onDrop = onDrop,
                         )
                     }
                 }
@@ -66,20 +135,61 @@ fun Pitch(
     }
 }
 
+private enum class CellHover { NONE, VALID, INVALID }
+
 @Composable
 private fun PitchCell(
     area: PitchArea,
     lineOfScrimmageBelow: Boolean,
     size: Dp,
     token: PlayerToken?,
+    tokenSelected: Boolean,
+    tokenDragged: Boolean,
     hasBall: Boolean,
+    ballSelected: Boolean,
+    ballDragged: Boolean,
+    isTarget: Boolean,
+    hover: CellHover,
+    onClick: () -> Unit,
+    onBallClick: () -> Unit,
+    statusMenuOpen: Boolean,
+    onContextMenu: () -> Unit,
+    onDoubleClick: () -> Unit,
+    onEmptyCellRightClick: () -> Unit,
+    onStatusSelected: (PlayerStatus) -> Unit,
+    onStatusMenuDismiss: () -> Unit,
+    dragState: BoardDragState?,
+    onDrop: (DragItem, DropTarget) -> Unit,
 ) {
+    // A cell with a player can be dragged (moving the player), opens the player's status menu
+    // (right-click or long-press) and toggles standing/prone on a double-click.
+    val interactions = if (token != null) {
+        Modifier
+            .then(
+                if (dragState != null) {
+                    Modifier.dragSource(dragState, DragItem.Player(token.playerId), onDrop)
+                } else {
+                    Modifier
+                },
+            )
+            .playerClicks(
+                onClick = onClick,
+                onContextMenu = onContextMenu,
+                onDoubleClick = onDoubleClick,
+            )
+    } else {
+        // A right-click on an empty cell deselects.
+        Modifier
+            .onRightClick(onEmptyCellRightClick)
+            .clickable(onClick = onClick)
+    }
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(size)
             .background(area.color)
             .drawBehind {
+                if (isTarget) drawRect(color = TargetCellOverlay)
                 drawRect(color = GridLineColor, style = Stroke(width = 1.dp.toPx()))
                 if (lineOfScrimmageBelow) {
                     // Drawn just inside the cell so the next row's background does not cover it.
@@ -92,19 +202,59 @@ private fun PitchCell(
                         strokeWidth = strokeWidth,
                     )
                 }
-            },
+                // Drag hover: cyan if the drop would be accepted, red if not.
+                if (hover != CellHover.NONE) {
+                    val strokeWidth = 2.dp.toPx()
+                    drawRect(
+                        color = if (hover == CellHover.VALID) SelectionColor else InvalidDropColor,
+                        topLeft = Offset(strokeWidth / 2, strokeWidth / 2),
+                        size = this.size.copy(
+                            width = this.size.width - strokeWidth,
+                            height = this.size.height - strokeWidth,
+                        ),
+                        style = Stroke(width = strokeWidth),
+                    )
+                }
+            }
+            .then(interactions),
     ) {
         if (token != null) {
-            PlayerTokenView(token = token, size = size * 0.85f)
+            PlayerTokenView(
+                token = token,
+                size = size * 0.85f,
+                selected = tokenSelected,
+                // While dragged, the original fades; a copy follows the pointer.
+                modifier = if (tokenDragged) Modifier.alpha(DRAGGED_ORIGINAL_ALPHA) else Modifier,
+            )
+            if (statusMenuOpen) {
+                StatusMenu(
+                    current = token.status,
+                    onSelect = onStatusSelected,
+                    onDismiss = onStatusMenuDismiss,
+                )
+            }
         }
         if (hasBall) {
+            // The ball has its own click and drag target, so it can be selected or dragged even
+            // on a player's cell.
+            val ballModifier = Modifier
+                .then(if (ballDragged) Modifier.alpha(DRAGGED_ORIGINAL_ALPHA) else Modifier)
+                .then(
+                    if (dragState != null) {
+                        Modifier.dragSource(dragState, DragItem.Ball, onDrop)
+                    } else {
+                        Modifier
+                    },
+                )
+                .clickable(onClick = onBallClick)
             if (token == null) {
-                BallTokenView(size = size * 0.55f)
+                BallTokenView(size = size * 0.55f, selected = ballSelected, modifier = ballModifier)
             } else {
                 // Shares the cell with a player: smaller, in the corner, so both stay visible.
                 BallTokenView(
                     size = size * 0.4f,
-                    modifier = Modifier.align(Alignment.BottomEnd),
+                    selected = ballSelected,
+                    modifier = Modifier.align(Alignment.BottomEnd).then(ballModifier),
                 )
             }
         }

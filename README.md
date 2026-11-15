@@ -9,17 +9,68 @@ tackle zones, blocks or dice. Optional rule-aware analysis may be added later, s
 
 ## Status
 
-Early development. The shared domain model (pitch, teams, players, ball and the initial sample setup) is
-implemented and tested. The app still shows a placeholder screen; no editor functionality is implemented yet.
+Early development. The tactical editor (milestones 0–2) is complete; saving setups (milestone 3) is next.
+
+What works now:
+
+- A 15 × 26 pitch with end zones, wide zones and the line of scrimmage.
+- Home (blue) and away (red) teams with 16 players each, numbered 1–16. Every player token shows its team
+  colour.
+- A dugout for each team (home on the left of the pitch, away on the right), with sections for reserves,
+  knocked out, casualties and sent off. The dugouts can be hidden; on Android they start hidden.
+- A ball marker that can be placed on any cell, including a player's. While the ball is off the pitch it
+  sits in an area below the pitch.
+- Moving players and the ball by dragging and dropping them, or by selecting them and then clicking a
+  destination (see below). Both work with a mouse and with touch.
+- Player statuses: on the pitch a player is standing, prone or stunned; in the dugout they are a reserve,
+  knocked out, a casualty or sent off. Prone players are shown darker; stunned players darker with a yellow
+  border.
+- Resetting to the initial sample setup, with a confirmation if there are unsaved changes.
+
+Setups are not saved yet: closing the app loses the current arrangement.
+
+The app starts with the initial sample setup: all 32 players in their dugouts and the ball off the pitch.
+
+## Using the editor
+
+Moving players and the ball by dragging:
+
+- Drag a player (on the pitch or in a dugout) or the ball onto a pitch cell, a section of the player's own
+  dugout, or (for the ball) the area below the pitch. While dragging, valid places are highlighted and the
+  place under the pointer shows a cyan border if the drop is allowed, or a red one if not. Dropping
+  anywhere else cancels the drag.
+
+Moving players and the ball by selecting and clicking:
+
+1. Click a player (on the pitch or in a dugout) or the ball to select it. It gets a cyan ring, and the
+   places it can go are highlighted.
+2. Click where it should go:
+   - a player: an empty pitch cell, or a section of their own team's dugout (which sets their status);
+   - the ball: any pitch cell, including one with a player, or the area below the pitch to take it off.
+3. A player moved to a pitch cell stays selected, so you can keep moving them. Clicking another player
+   selects that player instead.
+4. To deselect, click the selected player again, press Escape, right-click an empty pitch cell, or click
+   outside the pitch.
+
+A player coming from the dugout arrives on the pitch standing; a player moved within the pitch keeps their
+status. A player standing on the same cell as the ball carries it with them when moved to another pitch
+cell. If a move is not possible, for example onto another player or into the other team's dugout, a message
+explains why and nothing changes. Both ways of moving follow the same rules.
+
+Setting a player's status:
+
+- Right-click a player (long-press on touch) to open their status menu. On the pitch it offers standing,
+  prone and stunned; in the dugout it offers the four dugout sections.
+- Double-click a player on the pitch to toggle between standing and prone; a stunned player stands up.
+  Double-clicking a player in the dugout does nothing.
+
+Starting over:
+
+- Click **Reset** to go back to the initial sample setup. If you have made changes, you are asked to
+  confirm first.
 
 ## Planned features
 
-- A 15 × 26 pitch with end zones, wide zones and the line of scrimmage.
-- Home and away teams with 16 players each; every player token shows which team it belongs to.
-- A dugout for each team (home on the left of the pitch, away on the right) for players who are not on
-  the pitch: reserves, knocked out, casualties and sent off.
-- Moving players by drag-and-drop or by selecting a player and then clicking/tapping a destination.
-- A ball marker that moves independently of players.
 - Saving and reopening setups locally. There is no backend, account or cloud sync.
 - Later: undo/redo, training scenarios with instructions and annotations, and optional rule-aware analysis.
 
@@ -39,7 +90,7 @@ implemented and tested. The app still shows a placeholder screen; no editor func
 | Desktop | JVM | Built, tested and run |
 | Web (primary) | Kotlin/Wasm (`wasmJs`) | Built, tested and run in a browser |
 | Web (fallback) | Kotlin/JS (`js`) | Compiled after every change; tested and run in a browser at each milestone |
-| Android | Android | Build only: the app and host tests are built, but it is not run on a device or emulator yet |
+| Android | Android | Built and host tests run after every change; touch input checked by hand on an emulator |
 
 ## Project structure
 

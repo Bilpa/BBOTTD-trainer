@@ -9,30 +9,54 @@ import kotlin.test.assertTrue
 
 class PlayerTest {
 
-    private val dugoutStatuses = PlayerStatus.entries - PlayerStatus.ON_FIELD
+    private val onPitchStatuses = PlayerStatus.entries.filter { it.isOnPitch }
+    private val dugoutStatuses = PlayerStatus.entries.filter { !it.isOnPitch }
 
     @Test
-    fun onFieldPlayerHasPosition() {
-        val player = onFieldPlayer("p1", x = 7, y = 13)
-
-        assertTrue(player.isOnPitch)
-        assertEquals(BoardPosition(7, 13), player.position)
+    fun onFieldProneAndStunnedAreTheOnPitchStatuses() {
+        assertEquals(
+            listOf(PlayerStatus.ON_FIELD, PlayerStatus.PRONE, PlayerStatus.STUNNED),
+            onPitchStatuses,
+        )
+        assertEquals(
+            listOf(
+                PlayerStatus.RESERVE,
+                PlayerStatus.KNOCKED_OUT,
+                PlayerStatus.CASUALTY,
+                PlayerStatus.SENT_OFF,
+            ),
+            dugoutStatuses,
+        )
     }
 
     @Test
-    fun onFieldPlayerWithoutPositionIsRejected() {
-        assertFailsWith<IllegalArgumentException> {
-            Player(PlayerId("p1"), "p1", null, PlayerStatus.ON_FIELD, position = null)
+    fun everyOnPitchStatusHasAPosition() {
+        for (status in onPitchStatuses) {
+            val player = Player(PlayerId("p1"), "p1", null, status, BoardPosition(7, 13))
+
+            assertTrue(player.isOnPitch, "$status")
+            assertEquals(BoardPosition(7, 13), player.position, "$status")
         }
     }
 
     @Test
-    fun onFieldPlayerOutsideThePitchIsRejected() {
-        assertFailsWith<IllegalArgumentException> {
-            Player(PlayerId("p1"), "p1", null, PlayerStatus.ON_FIELD, BoardPosition(15, 0))
+    fun onPitchStatusWithoutPositionIsRejected() {
+        for (status in onPitchStatuses) {
+            assertFailsWith<IllegalArgumentException>("$status") {
+                Player(PlayerId("p1"), "p1", null, status, position = null)
+            }
         }
-        assertFailsWith<IllegalArgumentException> {
-            Player(PlayerId("p1"), "p1", null, PlayerStatus.ON_FIELD, BoardPosition(0, 26))
+    }
+
+    @Test
+    fun onPitchStatusOutsideThePitchIsRejected() {
+        for (status in onPitchStatuses) {
+            assertFailsWith<IllegalArgumentException>("$status, east") {
+                Player(PlayerId("p1"), "p1", null, status, BoardPosition(15, 0))
+            }
+            assertFailsWith<IllegalArgumentException>("$status, south") {
+                Player(PlayerId("p1"), "p1", null, status, BoardPosition(0, 26))
+            }
         }
     }
 
@@ -56,6 +80,18 @@ class PlayerTest {
     }
 
     @Test
+    fun changingBetweenOnPitchStatusesKeepsThePosition() {
+        val standing = onFieldPlayer("p1", x = 7, y = 13)
+
+        val prone = standing.copy(status = PlayerStatus.PRONE)
+        val stunned = prone.copy(status = PlayerStatus.STUNNED)
+
+        assertEquals(BoardPosition(7, 13), prone.position)
+        assertEquals(BoardPosition(7, 13), stunned.position)
+        assertTrue(stunned.isOnPitch)
+    }
+
+    @Test
     fun movingPlayerKeepsTheirId() {
         val player = onFieldPlayer("p1", x = 0, y = 0)
 
@@ -73,6 +109,9 @@ class PlayerTest {
         // copy() runs the same checks as the constructor.
         assertFailsWith<IllegalArgumentException> {
             player.copy(status = PlayerStatus.RESERVE)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            player.copy(status = PlayerStatus.STUNNED, position = null)
         }
     }
 }

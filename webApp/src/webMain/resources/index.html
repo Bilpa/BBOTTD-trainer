@@ -15,6 +15,10 @@
                           repeatCount="indefinite"/>
     </circle>
 </svg>
+<script>
+    // Right-click opens the app's own player status menu, so suppress the browser's context menu.
+    document.addEventListener('contextmenu', (event) => event.preventDefault());
+</script>
 <script type="application/javascript" src="webApp.js"></script>
 </body>
 </html>

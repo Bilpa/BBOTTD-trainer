@@ -1,71 +1,637 @@
 package org.example.bbottd_trainer.presentation
 
+import org.example.bbottd_trainer.domain.BallState
+import org.example.bbottd_trainer.domain.BoardPosition
+import org.example.bbottd_trainer.domain.PlayerId
+import org.example.bbottd_trainer.domain.PlayerStatus
 import org.example.bbottd_trainer.domain.SampleSetups
+import org.example.bbottd_trainer.domain.TacticalSetup
 import org.example.bbottd_trainer.domain.TeamId
+import org.example.bbottd_trainer.domain.onFieldPlayer
 import org.example.bbottd_trainer.domain.reservePlayer
 import org.example.bbottd_trainer.domain.setup
 import org.example.bbottd_trainer.domain.team
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BoardStateHolderTest {
 
+    /** h1 on the pitch at (7, 13), h2 a home reserve, a1 on the pitch at (7, 12). Ball off pitch. */
+    private val start = setup(
+        home = team(TeamId.HOME, onFieldPlayer("h1", x = 7, y = 13), reservePlayer("h2")),
+        away = team(TeamId.AWAY, onFieldPlayer("a1", x = 7, y = 12)),
+    )
+
+    private fun holder(setup: TacticalSetup = start) = BoardStateHolder(initialSetup = setup)
+
+    private fun BoardStateHolder.click(vararg actions: BoardAction) = actions.forEach(::onAction)
+
+    private val BoardStateHolder.current get() = state.value
+
+    private fun BoardStateHolder.positionOf(id: String): BoardPosition? =
+        current.setup.findPlayer(PlayerId(id))?.position
+
+    private fun BoardStateHolder.statusOf(id: String): PlayerStatus? =
+        current.setup.findPlayer(PlayerId(id))?.status
+
+    // --- Initial state ---------------------------------------------------------------------
+
     @Test
     fun startsWithTheInitialSampleSetupByDefault() {
-        val holder = BoardStateHolder()
-
-        assertEquals(SampleSetups.initial, holder.state.value.setup)
+        assertEquals(SampleSetups.initial, BoardStateHolder().current.setup)
     }
 
     @Test
-    fun startsWithTheGivenSetup() {
-        val custom = setup(home = team(TeamId.HOME, reservePlayer("h1")))
+    fun startsWithNothingSelectedNoMessageAndNoUnsavedChanges() {
+        val state = holder().current
 
-        val holder = BoardStateHolder(initialSetup = custom)
-
-        assertEquals(custom, holder.state.value.setup)
-    }
-
-    @Test
-    fun startsWithNoSelectionAndNoUnsavedChanges() {
-        val state = BoardStateHolder().state.value
-
-        assertNull(state.selectedPlayerId)
-        assertNull(state.selectedPosition)
+        assertNull(state.selection)
+        assertNull(state.message)
         assertFalse(state.isDirty)
     }
 
+    // --- Dugout visibility -----------------------------------------------------------------
+
     @Test
-    fun dugoutsAreVisibleByDefault() {
-        assertTrue(BoardStateHolder().state.value.dugoutsVisible)
+    fun dugoutsAreVisibleByDefaultAndCanStartHidden() {
+        assertTrue(BoardStateHolder().current.dugoutsVisible)
+        assertFalse(BoardStateHolder(dugoutsVisible = false).current.dugoutsVisible)
     }
 
     @Test
-    fun dugoutsCanStartHidden() {
-        assertFalse(BoardStateHolder(dugoutsVisible = false).state.value.dugoutsVisible)
-    }
-
-    @Test
-    fun setDugoutsVisibleShowsAndHidesThem() {
+    fun setDugoutsVisibleShowsAndHidesThemWithoutMarkingDirty() {
         val holder = BoardStateHolder(dugoutsVisible = false)
 
-        holder.onAction(BoardAction.SetDugoutsVisible(true))
-        assertTrue(holder.state.value.dugoutsVisible)
+        holder.click(BoardAction.SetDugoutsVisible(true))
+        assertTrue(holder.current.dugoutsVisible)
+        holder.click(BoardAction.SetDugoutsVisible(false))
+        assertFalse(holder.current.dugoutsVisible)
+        assertFalse(holder.current.isDirty)
+    }
 
-        holder.onAction(BoardAction.SetDugoutsVisible(false))
-        assertFalse(holder.state.value.dugoutsVisible)
+    // --- Selecting -------------------------------------------------------------------------
+
+    @Test
+    fun clickingAPlayersCellSelectsThemAndClickingAgainDeselects() {
+        val holder = holder()
+
+        holder.click(BoardAction.CellClicked(BoardPosition(7, 13)))
+        assertEquals(Selection.Player(PlayerId("h1")), holder.current.selection)
+
+        holder.click(BoardAction.CellClicked(BoardPosition(7, 13)))
+        assertNull(holder.current.selection)
     }
 
     @Test
-    fun showingDugoutsDoesNotChangeTheSetupOrMarkItDirty() {
-        val holder = BoardStateHolder(dugoutsVisible = false)
+    fun clickingADugoutPlayerSelectsThem() {
+        val holder = holder()
 
-        holder.onAction(BoardAction.SetDugoutsVisible(true))
+        holder.click(BoardAction.DugoutPlayerClicked(PlayerId("h2")))
 
-        assertEquals(SampleSetups.initial, holder.state.value.setup)
-        assertFalse(holder.state.value.isDirty)
+        assertEquals(Selection.Player(PlayerId("h2")), holder.current.selection)
+    }
+
+    @Test
+    fun clickingAnotherPlayerSwitchesTheSelectionInsteadOfMoving() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.CellClicked(BoardPosition(7, 13)),
+            BoardAction.CellClicked(BoardPosition(7, 12)),
+        )
+
+        assertEquals(Selection.Player(PlayerId("a1")), holder.current.selection)
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertNull(holder.current.message)
+    }
+
+    @Test
+    fun clickingAnEmptyCellWithNothingSelectedDoesNothing() {
+        val holder = holder()
+
+        holder.click(BoardAction.CellClicked(BoardPosition(0, 0)))
+
+        assertEquals(start, holder.current.setup)
+        assertNull(holder.current.selection)
+        assertNull(holder.current.message)
+    }
+
+    @Test
+    fun escapeClearsTheSelection() {
+        val holder = holder()
+
+        holder.click(BoardAction.DugoutPlayerClicked(PlayerId("h2")), BoardAction.ClearSelection)
+
+        assertNull(holder.current.selection)
+    }
+
+    // --- Moving players --------------------------------------------------------------------
+
+    @Test
+    fun selectedDugoutPlayerMovesToAnEmptyCellAsOnField() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.DugoutPlayerClicked(PlayerId("h2")),
+            BoardAction.CellClicked(BoardPosition(3, 20)),
+        )
+
+        assertEquals(BoardPosition(3, 20), holder.positionOf("h2"))
+        assertEquals(PlayerStatus.ON_FIELD, holder.statusOf("h2"))
+        assertEquals(
+            Selection.Player(PlayerId("h2")),
+            holder.current.selection,
+            "player stays selected after moving to a cell",
+        )
+        assertTrue(holder.current.isDirty)
+    }
+
+    @Test
+    fun selectedPitchPlayerCanBeMovedRepeatedlyWithoutReselecting() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.CellClicked(BoardPosition(7, 13)),
+            BoardAction.CellClicked(BoardPosition(1, 1)),
+            BoardAction.CellClicked(BoardPosition(2, 2)),
+        )
+
+        assertEquals(BoardPosition(2, 2), holder.positionOf("h1"))
+        assertEquals(Selection.Player(PlayerId("h1")), holder.current.selection)
+    }
+
+    @Test
+    fun clearSelectionDeselectsAMovedPlayer() {
+        // ClearSelection is sent for Escape, a right-click on an empty cell and a click outside
+        // the pitch.
+        val holder = holder()
+
+        holder.click(
+            BoardAction.CellClicked(BoardPosition(7, 13)),
+            BoardAction.CellClicked(BoardPosition(1, 1)),
+            BoardAction.ClearSelection,
+        )
+
+        assertNull(holder.current.selection)
+        assertEquals(BoardPosition(1, 1), holder.positionOf("h1"))
+    }
+
+    @Test
+    fun selectedPlayerMovesIntoTheClickedDugoutSection() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.CellClicked(BoardPosition(7, 13)),
+            BoardAction.DugoutSectionClicked(TeamId.HOME, PlayerStatus.KNOCKED_OUT),
+        )
+
+        assertEquals(PlayerStatus.KNOCKED_OUT, holder.statusOf("h1"))
+        assertNull(holder.positionOf("h1"))
+        assertNull(holder.current.selection)
+    }
+
+    @Test
+    fun moveIntoTheOtherTeamsDugoutShowsAMessageAndKeepsTheSelection() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.CellClicked(BoardPosition(7, 13)),
+            BoardAction.DugoutSectionClicked(TeamId.AWAY, PlayerStatus.RESERVE),
+        )
+
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertEquals(Selection.Player(PlayerId("h1")), holder.current.selection)
+        assertEquals("h1 can only go to the HOME dugout.", holder.current.message?.text)
+        assertFalse(holder.current.isDirty)
+    }
+
+    @Test
+    fun dugoutSectionClickWithNothingSelectedDoesNothing() {
+        val holder = holder()
+
+        holder.click(BoardAction.DugoutSectionClicked(TeamId.HOME, PlayerStatus.CASUALTY))
+
+        assertEquals(start, holder.current.setup)
+        assertNull(holder.current.message)
+    }
+
+    // --- Moving the ball -------------------------------------------------------------------
+
+    @Test
+    fun ballInTheOffPitchAreaCanBeSelectedByClickingTheAreaOrTheBall() {
+        val viaArea = holder().apply { click(BoardAction.OffPitchBallAreaClicked) }
+        val viaBall = holder().apply { click(BoardAction.BallClicked) }
+
+        assertEquals(Selection.Ball, viaArea.current.selection)
+        assertEquals(Selection.Ball, viaBall.current.selection)
+    }
+
+    @Test
+    fun selectedBallMovesToAnEmptyCellOrOntoAPlayer() {
+        val holder = holder()
+
+        holder.click(BoardAction.BallClicked, BoardAction.CellClicked(BoardPosition(4, 4)))
+        assertEquals(BoardPosition(4, 4), holder.current.setup.ball.position)
+        assertNull(holder.current.selection)
+
+        holder.click(BoardAction.BallClicked, BoardAction.CellClicked(BoardPosition(7, 13)))
+        assertEquals(BoardPosition(7, 13), holder.current.setup.ball.position)
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"), "player not moved")
+    }
+
+    @Test
+    fun clickingTheBallsCellSelectsTheBallWhenNoPlayerIsThere() {
+        val holder = holder(start.copy(ball = BallState(BoardPosition(4, 4))))
+
+        holder.click(BoardAction.CellClicked(BoardPosition(4, 4)))
+
+        assertEquals(Selection.Ball, holder.current.selection)
+    }
+
+    @Test
+    fun selectedBallGoesBackOffThePitchViaTheOffPitchArea() {
+        val holder = holder(start.copy(ball = BallState(BoardPosition(4, 4))))
+
+        holder.click(BoardAction.BallClicked, BoardAction.OffPitchBallAreaClicked)
+
+        assertNull(holder.current.setup.ball.position)
+        assertNull(holder.current.selection)
+    }
+
+    @Test
+    fun ballCannotGoIntoADugout() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.BallClicked,
+            BoardAction.DugoutSectionClicked(TeamId.HOME, PlayerStatus.RESERVE),
+        )
+
+        assertEquals("The ball cannot be put in a dugout.", holder.current.message?.text)
+        assertEquals(Selection.Ball, holder.current.selection)
+    }
+
+    @Test
+    fun aPlayerCannotGoIntoTheOffPitchBallArea() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.DugoutPlayerClicked(PlayerId("h2")),
+            BoardAction.OffPitchBallAreaClicked,
+        )
+
+        assertEquals("Only the ball can be placed here.", holder.current.message?.text)
+        assertNull(holder.positionOf("h2"))
+    }
+
+    // --- Status context menu ---------------------------------------------------------------
+
+    @Test
+    fun statusMenuOpensForAPlayerAndCanBeDismissed() {
+        val holder = holder()
+
+        holder.click(BoardAction.OpenStatusMenu(PlayerId("h1")))
+        assertEquals(PlayerId("h1"), holder.current.statusMenuPlayerId)
+
+        holder.click(BoardAction.DismissStatusMenu)
+        assertNull(holder.current.statusMenuPlayerId)
+        assertEquals(start, holder.current.setup)
+    }
+
+    @Test
+    fun choosingProneOrStunnedKeepsThePlayerInPlaceAndClosesTheMenu() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.OpenStatusMenu(PlayerId("h1")),
+            BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.PRONE),
+        )
+        assertEquals(PlayerStatus.PRONE, holder.statusOf("h1"))
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertNull(holder.current.statusMenuPlayerId)
+        assertTrue(holder.current.isDirty)
+
+        holder.click(BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.STUNNED))
+        assertEquals(PlayerStatus.STUNNED, holder.statusOf("h1"))
+    }
+
+    @Test
+    fun choosingADugoutStatusMovesTheDugoutPlayerToThatSection() {
+        val holder = holder()
+
+        holder.click(BoardAction.SetPlayerStatus(PlayerId("h2"), PlayerStatus.CASUALTY))
+
+        assertEquals(PlayerStatus.CASUALTY, holder.statusOf("h2"))
+        assertNull(holder.positionOf("h2"))
+    }
+
+    @Test
+    fun aStatusChangeKeepsTheCurrentSelection() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.DugoutPlayerClicked(PlayerId("h2")),
+            BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.PRONE),
+        )
+
+        assertEquals(Selection.Player(PlayerId("h2")), holder.current.selection)
+    }
+
+    @Test
+    fun aStatusNotValidWhereThePlayerIsIsRejectedWithAMessage() {
+        val holder = holder()
+
+        holder.click(BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.RESERVE))
+
+        assertEquals(PlayerStatus.ON_FIELD, holder.statusOf("h1"))
+        assertEquals("h1 cannot be set to Reserves there.", holder.current.message?.text)
+        assertNull(holder.current.statusMenuPlayerId)
+    }
+
+    @Test
+    fun aProneOrStunnedPlayerMovedWithinThePitchKeepsTheirStatus() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.STUNNED),
+            BoardAction.CellClicked(BoardPosition(7, 13)),
+            BoardAction.CellClicked(BoardPosition(2, 2)),
+        )
+
+        assertEquals(BoardPosition(2, 2), holder.positionOf("h1"))
+        assertEquals(PlayerStatus.STUNNED, holder.statusOf("h1"))
+    }
+
+    // --- Double-click ----------------------------------------------------------------------
+
+    @Test
+    fun doubleClickTogglesAPitchPlayerBetweenStandingAndProne() {
+        val holder = holder()
+
+        holder.click(BoardAction.PlayerDoubleClicked(PlayerId("h1")))
+        assertEquals(PlayerStatus.PRONE, holder.statusOf("h1"))
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertTrue(holder.current.isDirty)
+
+        holder.click(BoardAction.PlayerDoubleClicked(PlayerId("h1")))
+        assertEquals(PlayerStatus.ON_FIELD, holder.statusOf("h1"))
+    }
+
+    @Test
+    fun doubleClickMakesAStunnedPlayerStand() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.SetPlayerStatus(PlayerId("h1"), PlayerStatus.STUNNED),
+            BoardAction.PlayerDoubleClicked(PlayerId("h1")),
+        )
+
+        assertEquals(PlayerStatus.ON_FIELD, holder.statusOf("h1"))
+    }
+
+    @Test
+    fun doubleClickOnADugoutPlayerHasNoEffect() {
+        val holder = holder()
+
+        holder.click(BoardAction.PlayerDoubleClicked(PlayerId("h2")))
+
+        assertEquals(start, holder.current.setup)
+        assertNull(holder.current.message)
+        assertFalse(holder.current.isDirty)
+    }
+
+    @Test
+    fun doubleClickKeepsTheCurrentSelection() {
+        val holder = holder()
+
+        holder.click(
+            BoardAction.DugoutPlayerClicked(PlayerId("h2")),
+            BoardAction.PlayerDoubleClicked(PlayerId("h1")),
+        )
+
+        assertEquals(Selection.Player(PlayerId("h2")), holder.current.selection)
+    }
+
+    // --- Drag and drop ---------------------------------------------------------------------
+
+    private fun drop(item: DragItem, target: DropTarget) = BoardAction.Drop(item, target)
+
+    private val dragH1 = DragItem.Player(PlayerId("h1"))
+    private val dragH2 = DragItem.Player(PlayerId("h2"))
+
+    @Test
+    fun droppingADugoutPlayerOnAnEmptyCellMovesThemThereAndSelectsThem() {
+        val holder = holder()
+
+        holder.click(drop(dragH2, DropTarget.Cell(BoardPosition(3, 20))))
+
+        assertEquals(BoardPosition(3, 20), holder.positionOf("h2"))
+        assertEquals(PlayerStatus.ON_FIELD, holder.statusOf("h2"))
+        assertEquals(Selection.Player(PlayerId("h2")), holder.current.selection)
+        assertTrue(holder.current.isDirty)
+    }
+
+    @Test
+    fun droppingOntoAnotherPlayerIsRejectedAsOccupied() {
+        val holder = holder()
+
+        holder.click(drop(dragH1, DropTarget.Cell(BoardPosition(7, 12))))
+
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertEquals("Cell (7, 12) is occupied by a1.", holder.current.message?.text)
+        assertNull(holder.current.selection)
+    }
+
+    @Test
+    fun droppingAPlayerOnADugoutSectionSetsThatStatus() {
+        val holder = holder()
+
+        holder.click(drop(dragH1, DropTarget.DugoutSection(TeamId.HOME, PlayerStatus.SENT_OFF)))
+
+        assertEquals(PlayerStatus.SENT_OFF, holder.statusOf("h1"))
+        assertNull(holder.positionOf("h1"))
+    }
+
+    @Test
+    fun droppingAPlayerOnTheOtherTeamsDugoutIsRejected() {
+        val holder = holder()
+
+        holder.click(drop(dragH1, DropTarget.DugoutSection(TeamId.AWAY, PlayerStatus.RESERVE)))
+
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertEquals("h1 can only go to the HOME dugout.", holder.current.message?.text)
+    }
+
+    @Test
+    fun droppingAPlayerOnTheOffPitchBallAreaIsRejected() {
+        val holder = holder()
+
+        holder.click(drop(dragH1, DropTarget.OffPitchBallArea))
+
+        assertEquals(BoardPosition(7, 13), holder.positionOf("h1"))
+        assertEquals("Only the ball can be placed here.", holder.current.message?.text)
+    }
+
+    @Test
+    fun droppingTheBallMovesItOntoAnyCellOrBackOffThePitch() {
+        val holder = holder()
+
+        holder.click(drop(DragItem.Ball, DropTarget.Cell(BoardPosition(7, 13))))
+        assertEquals(BoardPosition(7, 13), holder.current.setup.ball.position)
+
+        holder.click(drop(DragItem.Ball, DropTarget.OffPitchBallArea))
+        assertNull(holder.current.setup.ball.position)
+    }
+
+    @Test
+    fun droppingTheBallOnADugoutIsRejected() {
+        val holder = holder()
+
+        holder.click(drop(DragItem.Ball, DropTarget.DugoutSection(TeamId.HOME, PlayerStatus.RESERVE)))
+
+        assertEquals("The ball cannot be put in a dugout.", holder.current.message?.text)
+        assertNull(holder.current.setup.ball.position)
+    }
+
+    @Test
+    fun droppingAPlayerCarryingTheBallTakesTheBallAlong() {
+        val holder = holder(start.copy(ball = BallState(BoardPosition(7, 13))))
+
+        holder.click(drop(dragH1, DropTarget.Cell(BoardPosition(2, 2))))
+
+        assertEquals(BoardPosition(2, 2), holder.current.setup.ball.position)
+    }
+
+    @Test
+    fun dragAndDropAndSelectThenClickGiveTheSameSetup() {
+        val viaDrop = holder().apply { click(drop(dragH2, DropTarget.Cell(BoardPosition(3, 20)))) }
+        val viaClick = holder().apply {
+            click(
+                BoardAction.DugoutPlayerClicked(PlayerId("h2")),
+                BoardAction.CellClicked(BoardPosition(3, 20)),
+            )
+        }
+
+        assertEquals(viaClick.current.setup, viaDrop.current.setup)
+    }
+
+    // --- Reset -----------------------------------------------------------------------------
+
+    @Test
+    fun resetWithoutUnsavedChangesResetsImmediately() {
+        val holder = holder()
+
+        holder.click(BoardAction.ResetRequested)
+
+        assertEquals(SampleSetups.initial, holder.current.setup)
+        assertFalse(holder.current.resetConfirmationVisible)
+        assertFalse(holder.current.isDirty)
+    }
+
+    @Test
+    fun resetWithUnsavedChangesAsksFirstAndChangesNothingYet() {
+        val holder = holder()
+        holder.click(BoardAction.PlayerDoubleClicked(PlayerId("h1")))
+        val changed = holder.current.setup
+
+        holder.click(BoardAction.ResetRequested)
+
+        assertTrue(holder.current.resetConfirmationVisible)
+        assertEquals(changed, holder.current.setup)
+        assertTrue(holder.current.isDirty)
+    }
+
+    @Test
+    fun confirmingTheResetRestoresTheSampleSetupAndClearsEditorState() {
+        val holder = holder(start.copy(ball = BallState(BoardPosition(4, 4))))
+        holder.click(
+            BoardAction.PlayerDoubleClicked(PlayerId("h1")),
+            BoardAction.DugoutPlayerClicked(PlayerId("h2")),
+            BoardAction.OpenStatusMenu(PlayerId("h1")),
+            BoardAction.SetDugoutsVisible(false),
+            BoardAction.ResetRequested,
+        )
+
+        holder.click(BoardAction.ResetConfirmed)
+
+        val state = holder.current
+        assertEquals(SampleSetups.initial, state.setup)
+        assertNull(state.selection)
+        assertNull(state.statusMenuPlayerId)
+        assertFalse(state.resetConfirmationVisible)
+        assertFalse(state.isDirty)
+        assertFalse(state.dugoutsVisible, "view settings are kept")
+    }
+
+    @Test
+    fun cancellingTheResetKeepsTheChanges() {
+        val holder = holder()
+        holder.click(BoardAction.PlayerDoubleClicked(PlayerId("h1")), BoardAction.ResetRequested)
+        val changed = holder.current.setup
+
+        holder.click(BoardAction.ResetCancelled)
+
+        assertFalse(holder.current.resetConfirmationVisible)
+        assertEquals(changed, holder.current.setup)
+        assertEquals(PlayerStatus.PRONE, holder.statusOf("h1"))
+        assertTrue(holder.current.isDirty)
+    }
+
+    @Test
+    fun editsAfterAResetMarkTheSetupDirtyAgain() {
+        val holder = BoardStateHolder()
+        holder.click(
+            BoardAction.DugoutPlayerClicked(PlayerId("home-1")),
+            BoardAction.CellClicked(BoardPosition(7, 13)),
+            BoardAction.ResetRequested,
+            BoardAction.ResetConfirmed,
+        )
+        assertFalse(holder.current.isDirty)
+
+        holder.click(
+            BoardAction.DugoutPlayerClicked(PlayerId("home-2")),
+            BoardAction.CellClicked(BoardPosition(7, 13)),
+        )
+
+        assertTrue(holder.current.isDirty)
+    }
+
+    // --- Messages and unsaved changes ------------------------------------------------------
+
+    @Test
+    fun eachMessageGetsANewIdAndShownClearsOnlyThatMessage() {
+        val holder = holder()
+        holder.click(BoardAction.BallClicked, BoardAction.DugoutSectionClicked(TeamId.HOME, PlayerStatus.RESERVE))
+        val first = assertNotNull(holder.current.message)
+
+        holder.click(BoardAction.DugoutSectionClicked(TeamId.HOME, PlayerStatus.RESERVE))
+        val second = assertNotNull(holder.current.message)
+        assertNotEquals(first.id, second.id, "same text, new message")
+
+        holder.click(BoardAction.MessageShown(first.id))
+        assertEquals(second, holder.current.message, "an older id does not clear a newer message")
+
+        holder.click(BoardAction.MessageShown(second.id))
+        assertNull(holder.current.message)
+    }
+
+    @Test
+    fun aMoveThatChangesNothingDoesNotMarkTheSetupDirty() {
+        val holder = holder()
+
+        // A reserve moved into the Reserves section they are already in.
+        holder.click(
+            BoardAction.DugoutPlayerClicked(PlayerId("h2")),
+            BoardAction.DugoutSectionClicked(TeamId.HOME, PlayerStatus.RESERVE),
+        )
+
+        assertEquals(start, holder.current.setup)
+        assertFalse(holder.current.isDirty)
+        assertNull(holder.current.selection)
     }
 }

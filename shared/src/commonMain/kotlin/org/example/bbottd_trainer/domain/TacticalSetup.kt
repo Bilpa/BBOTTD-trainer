@@ -40,6 +40,19 @@ data class TacticalSetup(
             TeamId.HOME -> home
             TeamId.AWAY -> away
         }
+
+    fun findPlayer(playerId: PlayerId): Player? = players.firstOrNull { it.id == playerId }
+
+    /** The team that owns the player, or `null` if no player has this ID. */
+    fun teamOf(playerId: PlayerId): TeamId? =
+        when {
+            home.players.any { it.id == playerId } -> TeamId.HOME
+            away.players.any { it.id == playerId } -> TeamId.AWAY
+            else -> null
+        }
+
+    /** The player standing on [position], if any. */
+    fun playerAt(position: BoardPosition): Player? = players.firstOrNull { it.position == position }
 }
 
 private fun <T> List<T>.duplicates(): Set<T> =

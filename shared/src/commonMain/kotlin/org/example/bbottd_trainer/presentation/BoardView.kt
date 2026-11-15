@@ -20,7 +20,26 @@ data class PlayerToken(
     val teamId: TeamId,
     val teamName: String,
     val teamColor: TeamColor,
+    val status: PlayerStatus,
 )
+
+/**
+ * The status a double-click gives a player: standing ↔ prone, and a stunned player stands up.
+ * `null` for players in the dugout, where a double-click has no effect.
+ */
+fun doubleClickStatus(current: PlayerStatus): PlayerStatus? =
+    when (current) {
+        PlayerStatus.ON_FIELD -> PlayerStatus.PRONE
+        PlayerStatus.PRONE, PlayerStatus.STUNNED -> PlayerStatus.ON_FIELD
+        PlayerStatus.RESERVE, PlayerStatus.KNOCKED_OUT, PlayerStatus.CASUALTY, PlayerStatus.SENT_OFF -> null
+    }
+
+/**
+ * The statuses offered in a player's context menu: only those valid where the player is now
+ * (standing, prone or stunned on the pitch; the four dugout statuses in the dugout).
+ */
+fun statusMenuOptions(current: PlayerStatus): List<PlayerStatus> =
+    PlayerStatus.entries.filter { it.isOnPitch == current.isOnPitch }
 
 /** One group in a team's dugout, such as its reserves. */
 data class DugoutSection(
@@ -28,8 +47,15 @@ data class DugoutSection(
     val players: List<PlayerToken>,
 )
 
-/** Dugout sections in display order: every status except [PlayerStatus.ON_FIELD]. */
-val DUGOUT_STATUSES: List<PlayerStatus> = PlayerStatus.entries.filter { it != PlayerStatus.ON_FIELD }
+/** Dugout sections in display order: every status that is not an on-pitch status. */
+val DUGOUT_STATUSES: List<PlayerStatus> = PlayerStatus.entries.filter { !it.isOnPitch }
+
+/** The token for one player, or `null` if no player has this ID. */
+fun TacticalSetup.tokenOf(playerId: PlayerId): PlayerToken? {
+    val teamId = teamOf(playerId) ?: return null
+    val team = team(teamId)
+    return team.players.firstOrNull { it.id == playerId }?.toToken(team)
+}
 
 /** Tokens of all players on the pitch, by the cell they occupy. */
 fun TacticalSetup.pitchTokens(): Map<BoardPosition, PlayerToken> =
@@ -55,6 +81,28 @@ fun TacticalSetup.dugoutSections(teamId: TeamId): List<DugoutSection> {
     }
 }
 
+/**
+ * Whether clicking [position] would move the current selection there, for target highlighting.
+ * A selected player can go to any empty cell; the ball can go to any cell.
+ */
+fun BoardUiState.isCellTarget(position: BoardPosition): Boolean =
+    when (selection) {
+        Selection.Ball -> position != setup.ball.position
+        is Selection.Player -> setup.playerAt(position) == null
+        null -> false
+    }
+
+/** Whether the selected player can be moved into [team]'s dugout (only their own team's). */
+fun BoardUiState.isDugoutTarget(team: TeamId): Boolean =
+    when (val current = selection) {
+        is Selection.Player -> setup.teamOf(current.playerId) == team
+        Selection.Ball, null -> false
+    }
+
+/** Whether the ball is selected and can be taken off the pitch. */
+val BoardUiState.isOffPitchBallTarget: Boolean
+    get() = selection == Selection.Ball && setup.ball.isOnPitch
+
 private fun Player.toToken(team: Team): PlayerToken =
     PlayerToken(
         playerId = id,
@@ -63,4 +111,5 @@ private fun Player.toToken(team: Team): PlayerToken =
         teamId = team.id,
         teamName = team.name,
         teamColor = team.color,
+        status = status,
     )
