@@ -57,6 +57,18 @@ sealed interface BoardAction {
      */
     data object ClearSelection : BoardAction
 
+    /**
+     * The user asked to reset to the initial sample setup. Resets at once if there are no unsaved
+     * changes; otherwise asks for confirmation first.
+     */
+    data object ResetRequested : BoardAction
+
+    /** The user confirmed discarding their changes and resetting. */
+    data object ResetConfirmed : BoardAction
+
+    /** The user cancelled the reset confirmation; nothing changes. */
+    data object ResetCancelled : BoardAction
+
     /** The UI has shown the message with this [id]. */
     data class MessageShown(val id: Long) : BoardAction
 }

@@ -32,6 +32,8 @@ import org.example.bbottd_trainer.domain.movePlayerToDugout
  * - A failed move keeps the selection and shows a message.
  * - [BoardAction.ClearSelection] (Escape, right-clicking an empty cell, clicking outside the
  *   pitch) deselects.
+ * - Reset returns to the initial sample setup, asking for confirmation only when there are unsaved
+ *   changes.
  *
  * @param dugoutsVisible whether the dugouts start visible. Android starts with them hidden because
  *   of limited screen space.
@@ -70,6 +72,15 @@ class BoardStateHolder(
                 )
             }
             BoardAction.ClearSelection -> select(null)
+            BoardAction.ResetRequested ->
+                if (state.value.isDirty) {
+                    mutableState.update { it.copy(resetConfirmationVisible = true) }
+                } else {
+                    resetToSample()
+                }
+            BoardAction.ResetConfirmed -> resetToSample()
+            BoardAction.ResetCancelled ->
+                mutableState.update { it.copy(resetConfirmationVisible = false) }
             is BoardAction.MessageShown -> mutableState.update {
                 if (it.message?.id == action.id) it.copy(message = null) else it
             }
@@ -157,6 +168,22 @@ class BoardStateHolder(
 
     private fun select(selection: Selection?) {
         mutableState.update { it.copy(selection = selection) }
+    }
+
+    /**
+     * Replaces the setup with the initial sample setup and clears the selection, any open menu or
+     * confirmation, and the unsaved-changes flag. Keeps view settings such as dugout visibility.
+     */
+    private fun resetToSample() {
+        mutableState.update {
+            it.copy(
+                setup = SampleSetups.initial,
+                selection = null,
+                statusMenuPlayerId = null,
+                resetConfirmationVisible = false,
+                isDirty = false,
+            )
+        }
     }
 
     private fun closeStatusMenu() {

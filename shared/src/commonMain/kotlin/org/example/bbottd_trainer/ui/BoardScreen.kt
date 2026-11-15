@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -149,6 +151,9 @@ fun BoardScreen(
                 ) {
                     Text(if (state.dugoutsVisible) "Hide dugouts" else "Show dugouts")
                 }
+                OutlinedButton(onClick = { onAction(BoardAction.ResetRequested) }) {
+                    Text("Reset")
+                }
             }
 
             Row(
@@ -233,6 +238,13 @@ fun BoardScreen(
             }
         }
 
+        if (state.resetConfirmationVisible) {
+            ResetConfirmationDialog(
+                onConfirm = { onAction(BoardAction.ResetConfirmed) },
+                onCancel = { onAction(BoardAction.ResetCancelled) },
+            )
+        }
+
         SnackbarHost(
             hostState = snackbarHostState,
             // Raised so it does not cover the off-pitch ball area at the bottom.
@@ -241,6 +253,23 @@ fun BoardScreen(
                 .padding(start = 16.dp, end = 16.dp, bottom = SnackbarBottomOffset),
         )
     }
+}
+
+/** Asks before discarding unsaved changes; shown only when the setup has been changed. */
+@Composable
+private fun ResetConfirmationDialog(
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Discard changes and reset?") },
+        text = {
+            Text("The setup will be replaced by the initial sample setup. Your changes will be lost.")
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Reset") } },
+        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+    )
 }
 
 @Composable

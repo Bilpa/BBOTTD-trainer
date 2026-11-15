@@ -9,7 +9,7 @@ tackle zones, blocks or dice. Optional rule-aware analysis may be added later, s
 
 ## Status
 
-Early development; editing interactions (milestone 2) are in progress.
+Early development. The tactical editor (milestones 0–2) is complete; saving setups (milestone 3) is next.
 
 What works now:
 
@@ -25,6 +25,9 @@ What works now:
 - Player statuses: on the pitch a player is standing, prone or stunned; in the dugout they are a reserve,
   knocked out, a casualty or sent off. Prone players are shown darker; stunned players darker with a yellow
   border.
+- Resetting to the initial sample setup, with a confirmation if there are unsaved changes.
+
+Setups are not saved yet: closing the app loses the current arrangement.
 
 The app starts with the initial sample setup: all 32 players in their dugouts and the ball off the pitch.
 
@@ -61,9 +64,13 @@ Setting a player's status:
 - Double-click a player on the pitch to toggle between standing and prone; a stunned player stands up.
   Double-clicking a player in the dugout does nothing.
 
+Starting over:
+
+- Click **Reset** to go back to the initial sample setup. If you have made changes, you are asked to
+  confirm first.
+
 ## Planned features
 
-- Resetting to the sample setup.
 - Saving and reopening setups locally. There is no backend, account or cloud sync.
 - Later: undo/redo, training scenarios with instructions and annotations, and optional rule-aware analysis.
 

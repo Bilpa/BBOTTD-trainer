@@ -18,6 +18,8 @@ data class BoardUiState(
     val dugoutsVisible: Boolean = true,
     /** The player whose status context menu is open, if any. */
     val statusMenuPlayerId: PlayerId? = null,
+    /** Whether the "Discard changes and reset?" confirmation is showing. */
+    val resetConfirmationVisible: Boolean = false,
 )
 
 /** What the user has selected, to be moved by clicking a target. */
