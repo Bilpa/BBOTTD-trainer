@@ -1,37 +1,37 @@
 package org.example.bbottd_trainer
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import org.example.bbottd_trainer.presentation.BoardStateHolder
+import org.example.bbottd_trainer.ui.BoardScreen
 
 /**
  * Shared root composable used by the Android, desktop and web entry points.
  *
- * Placeholder until the tactical board is implemented in Milestone 1.
+ * @param dugoutsVisibleByDefault whether the dugouts start visible. Android passes `false` because
+ *   of limited screen space; the user can open them with the "Show dugouts" button.
  */
 @Composable
 @Preview
-fun App() {
+fun App(dugoutsVisibleByDefault: Boolean = true) {
+    val stateHolder = remember { BoardStateHolder(dugoutsVisible = dugoutsVisibleByDefault) }
+    val state by stateHolder.state.collectAsState()
+
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .safeContentPadding(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "BBOTTD Trainer",
-                    style = MaterialTheme.typography.headlineMedium,
-                )
-            }
+            BoardScreen(
+                state = state,
+                onAction = stateHolder::onAction,
+                modifier = Modifier.safeContentPadding(),
+            )
         }
     }
 }
