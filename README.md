@@ -9,8 +9,8 @@ tackle zones, blocks or dice. Optional rule-aware analysis may be added later, s
 
 ## Status
 
-Early development. The project foundation is in place, and the app currently shows a placeholder screen.
-No editor functionality or tests are implemented yet.
+Early development. The shared domain model (pitch, teams, players, ball and the initial sample setup) is
+implemented and tested. The app still shows a placeholder screen; no editor functionality is implemented yet.
 
 ## Planned features
 
