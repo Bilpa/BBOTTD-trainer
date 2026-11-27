@@ -68,6 +68,9 @@ private val DraggedTokenSize = 32.dp
 /**
  * The board editor screen: the home dugout left of the pitch and the away dugout right of it.
  *
+ * [darkTheme] is the theme in effect (the remembered choice or the system setting), shown by the
+ * theme toggle.
+ *
  * Renders [state] and reports clicks, taps and keys through [onAction]; it never changes state
  * itself. Messages from the state holder are shown in a snackbar. Escape, a right-click on an
  * empty pitch cell and a click outside the pitch clear the selection.
@@ -75,6 +78,7 @@ private val DraggedTokenSize = 32.dp
 @Composable
 fun BoardScreen(
     state: BoardUiState,
+    darkTheme: Boolean,
     onAction: (BoardAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -134,7 +138,7 @@ fun BoardScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            EditorToolbar(state, onAction)
+            EditorToolbar(state, darkTheme, onAction)
 
             Row(
                 modifier = Modifier

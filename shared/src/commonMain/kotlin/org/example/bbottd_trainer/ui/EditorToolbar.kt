@@ -19,11 +19,12 @@ private val NameBlockWidth = 220.dp
 
 /**
  * The bar above the board: the setup's name and save status, and the New, Save, Save as,
- * Library and dugout buttons. It wraps onto more lines on narrow screens.
+ * Library, dugout and theme buttons. It wraps onto more lines on narrow screens.
  */
 @Composable
 fun EditorToolbar(
     state: BoardUiState,
+    darkTheme: Boolean,
     onAction: (BoardAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -65,6 +66,9 @@ fun EditorToolbar(
         }
         OutlinedButton(onClick = { onAction(BoardAction.SetDugoutsVisible(!state.dugoutsVisible)) }) {
             Text(if (state.dugoutsVisible) "Hide dugouts" else "Show dugouts")
+        }
+        OutlinedButton(onClick = { onAction(BoardAction.SetDarkTheme(!darkTheme)) }) {
+            Text(if (darkTheme) "Light mode" else "Dark mode")
         }
     }
 }

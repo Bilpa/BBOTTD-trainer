@@ -11,12 +11,12 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import org.example.bbottd_trainer.data.desktopSetupRepository
+import org.example.bbottd_trainer.data.desktopTextStore
 import org.example.bbottd_trainer.presentation.BoardAction
 
 fun main() = application {
-    val repository = remember { desktopSetupRepository() }
-    val stateHolder = rememberBoardStateHolder(repository)
+    val store = remember { desktopTextStore() }
+    val stateHolder = rememberBoardStateHolder(store)
     val state by stateHolder.state.collectAsState()
 
     // Closing the window is a request: with unsaved changes the app asks first, and closes once

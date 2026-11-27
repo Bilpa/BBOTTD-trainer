@@ -54,3 +54,9 @@ class InMemoryTextStore : TextStore {
         texts.remove(key)
     }
 }
+
+/**
+ * The folder, inside the app's data directory, that holds saved setups and app settings on
+ * platforms that store them as files (desktop and Android).
+ */
+const val SAVED_DATA_DIRECTORY_NAME = "saved_data"

@@ -29,6 +29,11 @@ data class BoardUiState(
     /** A save is in progress; further saves, New and Close wait until it is done. */
     val isSaving: Boolean = false,
     val dugoutsVisible: Boolean = true,
+    /**
+     * The remembered theme choice: `true` dark, `false` light, `null` follow the system setting.
+     * The UI resolves `null` with the system setting, which only it can read.
+     */
+    val darkTheme: Boolean? = null,
     /** The player whose status context menu is open, if any. */
     val statusMenuPlayerId: PlayerId? = null,
     /**

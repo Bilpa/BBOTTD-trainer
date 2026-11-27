@@ -3,7 +3,9 @@ package org.example.bbottd_trainer.presentation
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import org.example.bbottd_trainer.data.EditorPreferences
 import org.example.bbottd_trainer.data.InMemoryTextStore
+import org.example.bbottd_trainer.data.StoredEditorPreferences
 import org.example.bbottd_trainer.data.SetupRepository
 import org.example.bbottd_trainer.data.StorageResult
 import org.example.bbottd_trainer.data.StoredSetupRepository
@@ -20,9 +22,11 @@ fun testHolder(
     repository: SetupRepository = StoredSetupRepository(InMemoryTextStore()),
     initialSetup: TacticalSetup? = null,
     dugoutsVisible: Boolean = true,
+    preferences: EditorPreferences = StoredEditorPreferences(InMemoryTextStore()),
 ): BoardStateHolder =
     BoardStateHolder(
         repository = repository,
+        preferences = preferences,
         scope = CoroutineScope(Dispatchers.Unconfined),
         dugoutsVisible = dugoutsVisible,
         initialSetup = initialSetup,

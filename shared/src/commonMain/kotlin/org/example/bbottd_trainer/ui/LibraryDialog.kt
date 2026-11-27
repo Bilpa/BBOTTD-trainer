@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -38,7 +39,8 @@ import org.example.bbottd_trainer.presentation.LibraryItem
 import org.example.bbottd_trainer.presentation.LibraryState
 import org.example.bbottd_trainer.presentation.describe
 
-private val ListMaxHeight = 420.dp
+// A fixed height, so the dialog does not grow, shrink or move as setups are added or removed.
+private val ListHeight = 360.dp
 private val RowMinHeight = 48.dp
 
 /**
@@ -64,7 +66,9 @@ fun LibraryDialog(
                     if (library.isBusy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                LibraryList(library, openSetupId, onAction)
+                Box(modifier = Modifier.fillMaxWidth().height(ListHeight)) {
+                    LibraryList(library, openSetupId, onAction)
+                }
             }
         },
         confirmButton = {
@@ -101,7 +105,7 @@ private fun LibraryList(
         listError != null -> Text(listError, color = MaterialTheme.colorScheme.error)
         library.setups.isEmpty() && library.unreadable.isEmpty() && !library.isBusy ->
             Text("No saved setups yet. Use Save or Save as to add the current setup to the library.")
-        else -> LazyColumn(modifier = Modifier.heightIn(max = ListMaxHeight)) {
+        else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(library.setups, key = { "setup:" + it.id.value }) { summary ->
                 SetupRow(
                     summary = summary,

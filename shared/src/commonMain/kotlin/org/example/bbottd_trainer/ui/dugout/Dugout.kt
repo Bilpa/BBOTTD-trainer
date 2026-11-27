@@ -21,6 +21,9 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import org.example.bbottd_trainer.domain.PlayerId
 import org.example.bbottd_trainer.domain.PlayerStatus
@@ -77,7 +80,8 @@ fun Dugout(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        // A container colour that differs from the section borders in both light and dark themes.
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column(
             modifier = Modifier
@@ -88,7 +92,7 @@ fun Dugout(
             Text(
                 text = "$teamName dugout",
                 style = MaterialTheme.typography.titleSmall,
-                color = teamColor.displayColor,
+                color = teamColor.textColor(),
             )
             for (section in sections) {
                 val hovered = section.status == hoveredStatus
@@ -173,3 +177,15 @@ fun Dugout(
         }
     }
 }
+
+/**
+ * The team colour for text on the dugout background: as is on a light background, lightened on a
+ * dark one, where the team colours themselves have too little contrast.
+ */
+@Composable
+private fun TeamColor.textColor(): Color {
+    val isDarkBackground = MaterialTheme.colorScheme.surfaceContainerHigh.luminance() < 0.5f
+    return if (isDarkBackground) lerp(displayColor, Color.White, DARK_THEME_TEXT_LIGHTENING) else displayColor
+}
+
+private const val DARK_THEME_TEXT_LIGHTENING = 0.5f

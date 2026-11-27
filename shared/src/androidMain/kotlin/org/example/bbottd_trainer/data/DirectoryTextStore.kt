@@ -78,6 +78,5 @@ class DirectoryTextStore(private val directory: File) : TextStore {
     }
 }
 
-/** The setup repository of the Android app, in the app's private internal storage. */
-fun androidSetupRepository(context: Context): SetupRepository =
-    StoredSetupRepository(DirectoryTextStore(File(context.filesDir, "setups")))
+/** The Android app's storage for saved setups and app settings, in its private internal storage. */
+fun androidTextStore(context: Context): TextStore = DirectoryTextStore(File(context.filesDir, SAVED_DATA_DIRECTORY_NAME))

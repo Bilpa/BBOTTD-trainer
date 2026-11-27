@@ -23,7 +23,7 @@ class DirectoryTextStoreTest : TextStoreContractTest() {
     private val root: Path = Files.createTempDirectory("bbottd-store-test")
 
     /** A directory that does not exist yet, to check that the store creates it. */
-    private val directory: Path = root.resolve("nested").resolve("setups")
+    private val directory: Path = root.resolve("nested").resolve("saved_data")
 
     @AfterTest
     fun cleanUp() {
@@ -93,38 +93,38 @@ class DirectoryTextStoreTest : TextStoreContractTest() {
     }
 }
 
-class DesktopSetupDirectoryTest {
+class DesktopDataDirectoryTest {
     @Test
     fun windowsUsesAppData() {
-        val directory = desktopSetupDirectory(
+        val directory = desktopDataDirectory(
             osName = "Windows 11",
             environment = mapOf("APPDATA" to "C:\\Users\\u\\AppData\\Roaming"),
             userHome = "C:\\Users\\u",
         )
-        assertEquals(Path("C:\\Users\\u\\AppData\\Roaming", "BBOTTD-trainer", "setups"), directory)
+        assertEquals(Path("C:\\Users\\u\\AppData\\Roaming", "BBOTTD-trainer", "saved_data"), directory)
     }
 
     @Test
     fun windowsWithoutAppDataFallsBackToTheUsualPlace() {
-        val directory = desktopSetupDirectory(osName = "Windows 10", environment = emptyMap(), userHome = "home")
-        assertEquals(Path("home", "AppData", "Roaming", "BBOTTD-trainer", "setups"), directory)
+        val directory = desktopDataDirectory(osName = "Windows 10", environment = emptyMap(), userHome = "home")
+        assertEquals(Path("home", "AppData", "Roaming", "BBOTTD-trainer", "saved_data"), directory)
     }
 
     @Test
     fun macUsesApplicationSupport() {
-        val directory = desktopSetupDirectory(osName = "Mac OS X", environment = emptyMap(), userHome = "home")
-        assertEquals(Path("home", "Library", "Application Support", "BBOTTD-trainer", "setups"), directory)
+        val directory = desktopDataDirectory(osName = "Mac OS X", environment = emptyMap(), userHome = "home")
+        assertEquals(Path("home", "Library", "Application Support", "BBOTTD-trainer", "saved_data"), directory)
     }
 
     @Test
     fun linuxUsesXdgDataHome() {
-        val directory = desktopSetupDirectory(osName = "Linux", environment = mapOf("XDG_DATA_HOME" to "xdg"), userHome = "home")
-        assertEquals(Path("xdg", "BBOTTD-trainer", "setups"), directory)
+        val directory = desktopDataDirectory(osName = "Linux", environment = mapOf("XDG_DATA_HOME" to "xdg"), userHome = "home")
+        assertEquals(Path("xdg", "BBOTTD-trainer", "saved_data"), directory)
     }
 
     @Test
     fun linuxWithoutXdgDataHomeUsesLocalShare() {
-        val directory = desktopSetupDirectory(osName = "Linux", environment = emptyMap(), userHome = "home")
-        assertEquals(Path("home", ".local", "share", "BBOTTD-trainer", "setups"), directory)
+        val directory = desktopDataDirectory(osName = "Linux", environment = emptyMap(), userHome = "home")
+        assertEquals(Path("home", ".local", "share", "BBOTTD-trainer", "saved_data"), directory)
     }
 }

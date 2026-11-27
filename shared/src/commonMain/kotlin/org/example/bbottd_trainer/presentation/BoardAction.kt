@@ -17,6 +17,12 @@ sealed interface BoardAction {
     /** Show or hide both dugouts. */
     data class SetDugoutsVisible(val visible: Boolean) : BoardAction
 
+    /**
+     * Switch to the dark ([dark] `true`) or light theme. The choice is remembered, and from then
+     * on the system setting is no longer followed.
+     */
+    data class SetDarkTheme(val dark: Boolean) : BoardAction
+
     /** A pitch cell was clicked or tapped, whether or not a player or the ball is on it. */
     data class CellClicked(val position: BoardPosition) : BoardAction
 

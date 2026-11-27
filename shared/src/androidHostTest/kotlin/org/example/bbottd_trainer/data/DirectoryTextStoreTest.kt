@@ -16,7 +16,7 @@ class DirectoryTextStoreTest : TextStoreContractTest() {
     private val root: File = Files.createTempDirectory("bbottd-android-store-test").toFile()
 
     /** A directory that does not exist yet, to check that the store creates it. */
-    private val directory = File(File(root, "nested"), "setups")
+    private val directory = File(File(root, "nested"), "saved_data")
 
     @AfterTest
     fun cleanUp() {

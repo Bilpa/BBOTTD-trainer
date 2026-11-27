@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.example.bbottd_trainer.data.EditorPreferences
 import org.example.bbottd_trainer.data.SetupRepository
 import org.example.bbottd_trainer.data.StorageFailure
 import org.example.bbottd_trainer.data.StorageResult
@@ -52,6 +53,7 @@ import org.example.bbottd_trainer.domain.movePlayerToDugout
  * Storage runs in [scope]; its results come back as state updates.
  *
  * @param repository where setups are saved.
+ * @param preferences where app settings, such as the theme, are remembered.
  * @param scope runs storage operations; usually the composition's scope.
  * @param dugoutsVisible whether the dugouts start visible. Android starts with them hidden because
  *   of limited screen space.
@@ -60,6 +62,7 @@ import org.example.bbottd_trainer.domain.movePlayerToDugout
  */
 class BoardStateHolder(
     private val repository: SetupRepository,
+    private val preferences: EditorPreferences,
     private val scope: CoroutineScope,
     dugoutsVisible: Boolean = true,
     initialSetup: TacticalSetup? = null,
@@ -82,6 +85,10 @@ class BoardStateHolder(
 
     init {
         if (initialSetup == null) scope.launch { openLastSetup() }
+        scope.launch {
+            val dark = preferences.darkTheme()
+            mutableState.update { it.copy(darkTheme = dark) }
+        }
     }
 
     fun onAction(action: BoardAction) {
@@ -91,6 +98,11 @@ class BoardStateHolder(
         when (action) {
             is BoardAction.SetDugoutsVisible ->
                 mutableState.update { it.copy(dugoutsVisible = action.visible) }
+            is BoardAction.SetDarkTheme -> {
+                mutableState.update { it.copy(darkTheme = action.dark) }
+                // If it cannot be remembered, the theme still changes for this run.
+                scope.launch { preferences.setDarkTheme(action.dark) }
+            }
             is BoardAction.CellClicked -> onCellClicked(action.position)
             is BoardAction.DugoutPlayerClicked -> togglePlayerSelection(action.playerId)
             is BoardAction.DugoutSectionClicked -> onDugoutSectionClicked(action.team, action.status)
@@ -426,6 +438,7 @@ class BoardStateHolder(
 
     private fun BoardAction.isAllowedWhileLoading(): Boolean =
         this is BoardAction.SetDugoutsVisible ||
+            this is BoardAction.SetDarkTheme ||
             this is BoardAction.MessageShown ||
             this == BoardAction.CloseRequested
 

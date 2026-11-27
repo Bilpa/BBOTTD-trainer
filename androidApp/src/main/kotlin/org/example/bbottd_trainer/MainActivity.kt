@@ -8,18 +8,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.Preview
 import org.example.bbottd_trainer.data.InMemoryTextStore
-import org.example.bbottd_trainer.data.StoredSetupRepository
-import org.example.bbottd_trainer.data.androidSetupRepository
+import org.example.bbottd_trainer.data.androidTextStore
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        val repository = androidSetupRepository(applicationContext)
+        val store = androidTextStore(applicationContext)
         setContent {
             // Dugouts start hidden on Android because of limited screen space.
-            App(rememberBoardStateHolder(repository, dugoutsVisibleByDefault = false))
+            App(rememberBoardStateHolder(store, dugoutsVisibleByDefault = false))
         }
     }
 }
@@ -27,6 +26,6 @@ class MainActivity : ComponentActivity() {
 @Preview
 @Composable
 fun AppAndroidPreview() {
-    val repository = remember { StoredSetupRepository(InMemoryTextStore()) }
-    App(rememberBoardStateHolder(repository, dugoutsVisibleByDefault = false))
+    val store = remember { InMemoryTextStore() }
+    App(rememberBoardStateHolder(store, dugoutsVisibleByDefault = false))
 }
