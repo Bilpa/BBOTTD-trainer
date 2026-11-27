@@ -64,7 +64,8 @@ fun OffPitchBallArea(
             .then(border)
             .clickable(onClick = onClick),
         shape = AreaShape,
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        // The same container colour as the dugouts.
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),

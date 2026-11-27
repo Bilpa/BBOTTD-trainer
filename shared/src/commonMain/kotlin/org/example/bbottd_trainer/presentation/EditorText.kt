@@ -1,5 +1,7 @@
 package org.example.bbottd_trainer.presentation
 
+import org.example.bbottd_trainer.data.SetupDecodeFailure
+import org.example.bbottd_trainer.data.StorageFailure
 import org.example.bbottd_trainer.domain.BoardPosition
 import org.example.bbottd_trainer.domain.EditFailure
 import org.example.bbottd_trainer.domain.PlayerId
@@ -38,3 +40,22 @@ fun EditFailure.describe(setup: TacticalSetup): String =
 
 private fun TacticalSetup.playerName(playerId: PlayerId): String =
     findPlayer(playerId)?.name ?: "another player"
+
+/** Explains a storage failure, to follow "Could not save …:" or "Could not open …:". */
+fun StorageFailure.describe(): String =
+    when (this) {
+        StorageFailure.NotFound -> "it is no longer in the library."
+        is StorageFailure.Unreadable -> failure.describe()
+        is StorageFailure.StorageError -> "the storage reported an error ($detail)."
+    }
+
+/** Explains why a text could not be read as a setup. */
+fun SetupDecodeFailure.describe(): String =
+    when (this) {
+        SetupDecodeFailure.NotJson -> "the file is damaged (it is not valid JSON)."
+        SetupDecodeFailure.NotASetupFile -> "it is not a BBOTTD setup file."
+        is SetupDecodeFailure.UnsupportedVersion ->
+            "it was saved in format version $version, which this version of the app cannot read. " +
+                "A newer version of the app may be able to open it."
+        is SetupDecodeFailure.InvalidContent -> "the file is damaged ($detail)."
+    }

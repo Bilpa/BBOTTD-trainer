@@ -5,16 +5,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.Preview
+import org.example.bbottd_trainer.data.InMemoryTextStore
+import org.example.bbottd_trainer.data.UnavailableSetupFiles
+import org.example.bbottd_trainer.data.androidTextStore
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        val store = androidTextStore(applicationContext)
         setContent {
             // Dugouts start hidden on Android because of limited screen space.
-            App(dugoutsVisibleByDefault = false)
+            App(rememberBoardStateHolder(store, rememberAndroidSetupFiles(), dugoutsVisibleByDefault = false))
         }
     }
 }
@@ -22,5 +27,6 @@ class MainActivity : ComponentActivity() {
 @Preview
 @Composable
 fun AppAndroidPreview() {
-    App(dugoutsVisibleByDefault = false)
+    val store = remember { InMemoryTextStore() }
+    App(rememberBoardStateHolder(store, UnavailableSetupFiles, dugoutsVisibleByDefault = false))
 }
