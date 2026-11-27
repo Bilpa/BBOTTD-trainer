@@ -1,8 +1,10 @@
 package org.example.bbottd_trainer.presentation
 
+import org.example.bbottd_trainer.data.SetupSummary
 import org.example.bbottd_trainer.domain.BoardPosition
 import org.example.bbottd_trainer.domain.PlayerId
 import org.example.bbottd_trainer.domain.PlayerStatus
+import org.example.bbottd_trainer.domain.SetupId
 import org.example.bbottd_trainer.domain.TeamId
 
 /**
@@ -92,6 +94,39 @@ sealed interface BoardAction {
      * changes; otherwise the user is asked first. See [BoardUiState.closeApproved].
      */
     data object CloseRequested : BoardAction
+
+    /** Show the library of saved setups; its list is loaded fresh each time. */
+    data object LibraryRequested : BoardAction
+
+    /** Close the library. */
+    data object LibraryClosed : BoardAction
+
+    /**
+     * A setup in the library was chosen to open. If there are unsaved changes, the user is asked
+     * first whether to save them.
+     */
+    data class OpenSetupRequested(val id: SetupId, val name: String) : BoardAction
+
+    /** Show the rename dialog for a saved setup. */
+    data class RenameRequested(val summary: SetupSummary) : BoardAction
+
+    /** The rename dialog was confirmed with this [name]. */
+    data class RenameConfirmed(val name: String) : BoardAction
+
+    /** The rename dialog was cancelled. */
+    data object RenameCancelled : BoardAction
+
+    /** Save a copy of a saved setup under a new ID, named "<name> (copy)". It is not opened. */
+    data class DuplicateRequested(val summary: SetupSummary) : BoardAction
+
+    /** Ask for confirmation to delete a library item. */
+    data class DeleteRequested(val item: LibraryItem) : BoardAction
+
+    /** The delete confirmation was confirmed. */
+    data object DeleteConfirmed : BoardAction
+
+    /** The delete confirmation was cancelled. */
+    data object DeleteCancelled : BoardAction
 
     /** The UI has shown the message with this [id]. */
     data class MessageShown(val id: Long) : BoardAction

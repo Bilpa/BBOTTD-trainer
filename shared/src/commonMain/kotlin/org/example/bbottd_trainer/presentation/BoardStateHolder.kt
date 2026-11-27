@@ -46,6 +46,8 @@ import org.example.bbottd_trainer.domain.movePlayerToDugout
  * - Save as always creates a new library entry with a new ID; the editor continues with it.
  * - New and Close ask whether to save unsaved changes first (Save, Discard or Cancel).
  * - The setup saved or opened last is reopened at start; a new setup clears that record.
+ * - Opening a setup from the library asks about unsaved changes like New does. Renaming,
+ *   duplicating and deleting saved setups are handled by [SetupLibraryController].
  *
  * Storage runs in [scope]; its results come back as state updates.
  *
@@ -73,6 +75,8 @@ class BoardStateHolder(
 
     /** What to do once the setup is saved through the "Save as" dialog, if anything. */
     private var afterSaveAs: PendingAction? = null
+
+    private val library = SetupLibraryController(mutableState, repository, scope) { showMessage(it) }
 
     val state: StateFlow<BoardUiState> = mutableState.asStateFlow()
 
@@ -127,6 +131,17 @@ class BoardStateHolder(
             }
             BoardAction.UnsavedChangesCancel ->
                 mutableState.update { it.copy(unsavedChangesPrompt = null) }
+            BoardAction.LibraryRequested -> library.show()
+            BoardAction.LibraryClosed -> library.close()
+            is BoardAction.OpenSetupRequested -> onOpenSetupRequested(action.id, action.name)
+            is BoardAction.RenameRequested,
+            is BoardAction.RenameConfirmed,
+            BoardAction.RenameCancelled,
+            is BoardAction.DuplicateRequested,
+            is BoardAction.DeleteRequested,
+            BoardAction.DeleteConfirmed,
+            BoardAction.DeleteCancelled,
+            -> library.onAction(action)
             is BoardAction.MessageShown -> mutableState.update {
                 if (it.message?.id == action.id) it.copy(message = null) else it
             }
@@ -232,6 +247,49 @@ class BoardStateHolder(
         when (action) {
             PendingAction.NewSetup -> startNewSetup()
             PendingAction.Close -> mutableState.update { it.copy(closeApproved = true) }
+            is PendingAction.Open -> openSetup(action.id, action.name)
+        }
+    }
+
+    private fun onOpenSetupRequested(id: SetupId, name: String) {
+        val current = state.value
+        if (current.library?.isBusy == true) return
+        if (current.isInLibrary && current.setup.id == id && !current.isDirty) {
+            // Already open, unchanged: nothing to load.
+            library.close()
+            return
+        }
+        // Opening the open setup while it has unsaved changes goes back to its saved version,
+        // after the same question as for any other setup.
+        runAfterAskingToSave(PendingAction.Open(id, name))
+    }
+
+    /**
+     * Loads the saved setup [id] into the editor and closes the library. It becomes the setup to
+     * reopen at start. If it cannot be loaded, the user is told why and the editor is unchanged.
+     */
+    private fun openSetup(id: SetupId, name: String) {
+        mutableState.update { it.copy(library = it.library?.copy(isBusy = true)) }
+        scope.launch {
+            when (val result = repository.load(id)) {
+                is StorageResult.Success -> {
+                    mutableState.update {
+                        it.copy(
+                            setup = result.value,
+                            isInLibrary = true,
+                            isDirty = false,
+                            selection = null,
+                            statusMenuPlayerId = null,
+                            library = null,
+                        )
+                    }
+                    repository.setLastOpenedSetupId(id)
+                }
+                is StorageResult.Failure -> {
+                    showMessage("Could not open “$name”: ${result.failure.describe()}")
+                    library.refresh()
+                }
+            }
         }
     }
 

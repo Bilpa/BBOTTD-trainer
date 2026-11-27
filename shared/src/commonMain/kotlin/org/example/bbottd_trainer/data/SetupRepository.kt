@@ -60,6 +60,12 @@ interface SetupRepository {
     /** Deletes the setup with this ID. Succeeds if there is none. */
     suspend fun delete(id: SetupId): StorageResult<Unit>
 
+    /**
+     * Deletes a stored entry that could not be read (see [SetupLibrary.unreadable]), by its
+     * [UnreadableEntry.entryKey]. Only setup entries can be deleted this way.
+     */
+    suspend fun deleteEntry(entryKey: String): StorageResult<Unit>
+
     /** The setup opened last, or `null` if none is recorded or it cannot be read. */
     suspend fun lastOpenedSetupId(): SetupId?
 

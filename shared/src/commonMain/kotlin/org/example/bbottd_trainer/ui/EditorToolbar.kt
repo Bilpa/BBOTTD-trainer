@@ -18,8 +18,8 @@ import org.example.bbottd_trainer.presentation.BoardUiState
 private val NameBlockWidth = 220.dp
 
 /**
- * The bar above the board: the setup's name and save status, and the New, Save, Save as and
- * dugout buttons. It wraps onto more lines on narrow screens.
+ * The bar above the board: the setup's name and save status, and the New, Save, Save as,
+ * Library and dugout buttons. It wraps onto more lines on narrow screens.
  */
 @Composable
 fun EditorToolbar(
@@ -59,6 +59,9 @@ fun EditorToolbar(
         }
         OutlinedButton(onClick = { onAction(BoardAction.SaveAsRequested) }, enabled = storageIdle) {
             Text("Save as…")
+        }
+        OutlinedButton(onClick = { onAction(BoardAction.LibraryRequested) }, enabled = storageIdle) {
+            Text("Library")
         }
         OutlinedButton(onClick = { onAction(BoardAction.SetDugoutsVisible(!state.dugoutsVisible)) }) {
             Text(if (state.dugoutsVisible) "Hide dugouts" else "Show dugouts")

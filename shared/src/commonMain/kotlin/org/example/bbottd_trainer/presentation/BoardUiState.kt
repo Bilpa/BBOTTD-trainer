@@ -1,6 +1,9 @@
 package org.example.bbottd_trainer.presentation
 
+import org.example.bbottd_trainer.data.SetupSummary
+import org.example.bbottd_trainer.data.UnreadableEntry
 import org.example.bbottd_trainer.domain.PlayerId
+import org.example.bbottd_trainer.domain.SetupId
 import org.example.bbottd_trainer.domain.TacticalSetup
 
 /**
@@ -35,6 +38,8 @@ data class BoardUiState(
     val unsavedChangesPrompt: PendingAction? = null,
     /** When set, the "Save as" dialog is showing. */
     val saveAsDialog: SaveAsDialog? = null,
+    /** When set, the library of saved setups is showing. */
+    val library: LibraryState? = null,
     /**
      * The user may close the app: there were no unsaved changes, or they were saved or
      * discarded. The platform entry point closes the window when this becomes `true`.
@@ -49,6 +54,36 @@ sealed interface PendingAction {
 
     /** Close the app. */
     data object Close : PendingAction
+
+    /** Open the saved setup [id], called [name]. */
+    data class Open(val id: SetupId, val name: String) : PendingAction
+}
+
+/**
+ * The library of saved setups, while it is showing.
+ *
+ * @property setups the saved setups, sorted by name.
+ * @property unreadable stored entries that could not be read, such as damaged files.
+ * @property isBusy the list is loading, or a setup is being opened, renamed, duplicated or
+ *   deleted; further operations wait until it is done.
+ * @property listError why the list could not be loaded, if it could not.
+ * @property renaming the setup whose rename dialog is showing.
+ * @property deleting the item whose delete confirmation is showing.
+ */
+data class LibraryState(
+    val setups: List<SetupSummary> = emptyList(),
+    val unreadable: List<UnreadableEntry> = emptyList(),
+    val isBusy: Boolean = true,
+    val listError: String? = null,
+    val renaming: SetupSummary? = null,
+    val deleting: LibraryItem? = null,
+)
+
+/** Something listed in the library: a saved setup, or an entry that could not be read. */
+sealed interface LibraryItem {
+    data class Setup(val summary: SetupSummary) : LibraryItem
+
+    data class Unreadable(val entry: UnreadableEntry) : LibraryItem
 }
 
 /** The "Save as" dialog, which asks for the setup's name; it starts with [initialName]. */

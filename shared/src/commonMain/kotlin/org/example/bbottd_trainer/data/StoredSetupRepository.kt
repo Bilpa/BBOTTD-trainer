@@ -51,6 +51,13 @@ class StoredSetupRepository(private val store: TextStore) : SetupRepository {
     override suspend fun delete(id: SetupId): StorageResult<Unit> =
         storageCall { store.delete(entryKeyOf(id)) }
 
+    override suspend fun deleteEntry(entryKey: String): StorageResult<Unit> =
+        storageCall {
+            // Never other entries, such as the last-opened record.
+            require(entryKey.startsWith(SETUP_KEY_PREFIX)) { "Not a setup entry: $entryKey" }
+            store.delete(entryKey)
+        }
+
     override suspend fun lastOpenedSetupId(): SetupId? =
         when (val read = storageCall { store.read(LAST_OPENED_KEY) }) {
             is StorageResult.Success -> read.value?.takeIf { it.isNotEmpty() }?.let(::SetupId)

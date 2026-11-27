@@ -261,3 +261,22 @@ private class FlakyTextStore : TextStore {
 
     override suspend fun delete(key: String) = delegate.delete(key)
 }
+
+class DeleteEntryTest {
+    private val store = InMemoryTextStore()
+    private val repository = StoredSetupRepository(store)
+
+    @Test
+    fun unreadableEntryCanBeDeletedByKey() = runSuspend {
+        store.write("setup-bad", "{ damaged")
+        assertIs<StorageResult.Success<Unit>>(repository.deleteEntry("setup-bad"))
+        assertEquals(emptyList(), (repository.list() as StorageResult.Success).value.unreadable)
+    }
+
+    @Test
+    fun otherEntriesCannotBeDeletedByKey() = runSuspend {
+        repository.setLastOpenedSetupId(SetupId("one"))
+        assertIs<StorageResult.Failure>(repository.deleteEntry("last-opened"))
+        assertEquals(SetupId("one"), repository.lastOpenedSetupId())
+    }
+}

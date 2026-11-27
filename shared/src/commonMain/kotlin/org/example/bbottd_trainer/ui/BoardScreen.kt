@@ -218,6 +218,14 @@ fun BoardScreen(
             }
         }
 
+        // The library comes first, so the prompts it can lead to are shown on top of it.
+        state.library?.let { library ->
+            LibraryDialog(
+                library = library,
+                openSetupId = setup.id.takeIf { state.isInLibrary },
+                onAction = onAction,
+            )
+        }
         state.unsavedChangesPrompt?.let { pending ->
             UnsavedChangesDialog(
                 setupName = setup.name,

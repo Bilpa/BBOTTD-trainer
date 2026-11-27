@@ -36,6 +36,8 @@ fun UnsavedChangesDialog(
         PendingAction.NewSetup ->
             "Save changes before starting a new setup?" to "a new setup is started"
         PendingAction.Close -> "Save changes before closing?" to "the app closes"
+        is PendingAction.Open ->
+            "Save changes before opening “${pending.name}”?" to "the other setup is opened"
     }
     AlertDialog(
         onDismissRequest = onCancel,
@@ -51,14 +53,26 @@ fun UnsavedChangesDialog(
     )
 }
 
-/**
- * Asks for the name to save the setup under. The name field starts with [initialName], selected,
- * so typing replaces it. Save is disabled while the name is blank.
- */
+/** Asks for the name to save the setup under; see [NameDialog]. */
 @Composable
 fun SaveAsDialog(
     initialName: String,
     onSave: (String) -> Unit,
+    onCancel: () -> Unit,
+) {
+    NameDialog(title = "Save setup as", confirmLabel = "Save", initialName, onSave, onCancel)
+}
+
+/**
+ * Asks for a setup name. The name field starts with [initialName], selected, so typing replaces
+ * it. The confirm button is disabled while the name is blank; Enter confirms.
+ */
+@Composable
+fun NameDialog(
+    title: String,
+    confirmLabel: String,
+    initialName: String,
+    onConfirm: (String) -> Unit,
     onCancel: () -> Unit,
 ) {
     // The text being typed is local to the dialog until Save sends it as an action.
@@ -71,7 +85,7 @@ fun SaveAsDialog(
 
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text("Save setup as") },
+        title = { Text(title) },
         text = {
             OutlinedTextField(
                 value = name,
@@ -79,12 +93,12 @@ fun SaveAsDialog(
                 label = { Text("Name") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (canSave) onSave(name.text) }),
+                keyboardActions = KeyboardActions(onDone = { if (canSave) onConfirm(name.text) }),
                 modifier = Modifier.focusRequester(focusRequester),
             )
         },
         confirmButton = {
-            TextButton(onClick = { onSave(name.text) }, enabled = canSave) { Text("Save") }
+            TextButton(onClick = { onConfirm(name.text) }, enabled = canSave) { Text(confirmLabel) }
         },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )
