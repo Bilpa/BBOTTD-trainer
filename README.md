@@ -9,7 +9,8 @@ tackle zones, blocks or dice. Optional rule-aware analysis may be added later, s
 
 ## Status
 
-Early development. The tactical editor (milestones 0–2) is complete; saving setups (milestone 3) is next.
+Early development. The tactical editor and saving setups (milestones 0–3) are complete; editing quality
+(milestone 4: undo/redo, player details, keyboard and layout improvements) is next.
 
 What works now:
 
@@ -25,11 +26,12 @@ What works now:
 - Player statuses: on the pitch a player is standing, prone or stunned; in the dugout they are a reserve,
   knocked out, a casualty or sent off. Prone players are shown darker; stunned players darker with a yellow
   border.
-- Resetting to the initial sample setup, with a confirmation if there are unsaved changes.
+- Saving setups locally, a library to open, rename, duplicate and delete them, and exporting and importing
+  setups as `.json` files. Everything stays on your device; there is no account or cloud sync.
+- A light and a dark theme.
 
-Setups are not saved yet: closing the app loses the current arrangement.
-
-The app starts with the initial sample setup: all 32 players in their dugouts and the ball off the pitch.
+The first time, the app starts with the initial sample setup: all 32 players in their dugouts and the ball
+off the pitch. After that it reopens the setup you saved or opened last.
 
 ## Using the editor
 
@@ -64,15 +66,46 @@ Setting a player's status:
 - Double-click a player on the pitch to toggle between standing and prone; a stunned player stands up.
   Double-clicking a player in the dugout does nothing.
 
-Starting over:
+## Saving and the library
 
-- Click **Reset** to go back to the initial sample setup. If you have made changes, you are asked to
-  confirm first.
+The bar above the pitch shows the setup's name and whether it is saved. Saving and files are in the
+**File** menu:
+
+- **New** starts a new setup from the initial sample setup.
+- **Save** saves the setup. A setup that has never been saved asks for a name first.
+- **Save as…** saves a copy under a new name; you continue with the copy.
+- **Library…** lists your saved setups. Click one to open it. Its **More** menu renames, duplicates,
+  exports or deletes it (deleting asks first). Entries that cannot be read, such as damaged files, are
+  listed with the reason and can be deleted.
+- **Import…** adds a setup file to the library. It is always added as a new setup, so nothing in the
+  library is replaced. Files that are not setup files, are damaged, or come from a newer version of the app
+  are refused with the reason.
+- **Export…** saves the setup on screen, including unsaved changes, as a `.json` file.
+
+Nothing is saved automatically. Before something would lose unsaved changes (New, opening another setup,
+or closing the desktop app) you are asked whether to save them. The web app shows the browser's own
+"Leave site?" warning instead.
+
+Where setups are kept:
+
+| Platform | Location |
+|---|---|
+| Windows | `%APPDATA%\BBOTTD-trainer\saved_data` |
+| macOS | `~/Library/Application Support/BBOTTD-trainer/saved_data` |
+| Linux | `~/.local/share/BBOTTD-trainer/saved_data` (or under `$XDG_DATA_HOME`) |
+| Android | The app's private storage |
+| Web | The browser's local storage for the site |
+
+The browser may clear its storage (for example when you clear site data), so export setups you want to
+keep from the web app.
+
+**Dark mode / Light mode** in the bar switches the theme. The app follows your system's setting until you
+use it, and then remembers your choice.
 
 ## Planned features
 
-- Saving and reopening setups locally. There is no backend, account or cloud sync.
-- Later: undo/redo, training scenarios with instructions and annotations, and optional rule-aware analysis.
+- Undo/redo, player details, keyboard shortcuts and a better layout on small screens.
+- Later: training scenarios with instructions and annotations, and optional rule-aware analysis.
 
 ## Pitch conventions
 
@@ -90,7 +123,7 @@ Starting over:
 | Desktop | JVM | Built, tested and run |
 | Web (primary) | Kotlin/Wasm (`wasmJs`) | Built, tested and run in a browser |
 | Web (fallback) | Kotlin/JS (`js`) | Compiled after every change; tested and run in a browser at each milestone |
-| Android | Android | Built and host tests run after every change; touch input checked by hand on an emulator |
+| Android | Android | Built and host tests run after every change; touch input checked by hand on an emulator. Saving and the file picker are built but not run. |
 
 ## Project structure
 
@@ -138,5 +171,5 @@ The web tests run in a headless browser, so Chrome must be installed.
 
 ## Built with
 
-Kotlin 2.4.21, Compose Multiplatform 1.12.2, Gradle 9.3.1 and Android Gradle Plugin 9.1.1.
-Exact versions are in `gradle/libs.versions.toml`.
+Kotlin 2.4.21, Compose Multiplatform 1.12.2, kotlinx.serialization 1.13.0 (setup files), Gradle 9.3.1 and
+Android Gradle Plugin 9.1.1. Exact versions are in `gradle/libs.versions.toml`.
