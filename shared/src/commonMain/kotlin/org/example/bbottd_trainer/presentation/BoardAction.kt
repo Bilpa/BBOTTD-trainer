@@ -58,16 +58,40 @@ sealed interface BoardAction {
     data object ClearSelection : BoardAction
 
     /**
-     * The user asked to reset to the initial sample setup. Resets at once if there are no unsaved
-     * changes; otherwise asks for confirmation first.
+     * Start a new setup from the initial sample setup. If there are unsaved changes, the user is
+     * asked first whether to save them.
      */
-    data object ResetRequested : BoardAction
+    data object NewRequested : BoardAction
 
-    /** The user confirmed discarding their changes and resetting. */
-    data object ResetConfirmed : BoardAction
+    /**
+     * Save the setup. A setup that is not in the library yet opens the "Save as" dialog instead,
+     * since it needs a name.
+     */
+    data object SaveRequested : BoardAction
 
-    /** The user cancelled the reset confirmation; nothing changes. */
-    data object ResetCancelled : BoardAction
+    /** Open the "Save as" dialog, to save the setup as a new library entry. */
+    data object SaveAsRequested : BoardAction
+
+    /** The "Save as" dialog was confirmed with this [name]. */
+    data class SaveAsConfirmed(val name: String) : BoardAction
+
+    /** The "Save as" dialog was cancelled; nothing is saved. */
+    data object SaveAsCancelled : BoardAction
+
+    /** "Save" in the unsaved-changes prompt: save, then continue with the pending action. */
+    data object UnsavedChangesSave : BoardAction
+
+    /** "Discard" in the unsaved-changes prompt: continue without saving. */
+    data object UnsavedChangesDiscard : BoardAction
+
+    /** "Cancel" in the unsaved-changes prompt: do nothing. */
+    data object UnsavedChangesCancel : BoardAction
+
+    /**
+     * The user tried to close the app (desktop window). Approved at once if there are no unsaved
+     * changes; otherwise the user is asked first. See [BoardUiState.closeApproved].
+     */
+    data object CloseRequested : BoardAction
 
     /** The UI has shown the message with this [id]. */
     data class MessageShown(val id: Long) : BoardAction

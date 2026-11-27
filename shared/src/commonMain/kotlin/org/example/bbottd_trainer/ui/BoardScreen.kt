@@ -12,10 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -138,23 +134,7 @@ fun BoardScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Text(
-                    text = setup.name,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                OutlinedButton(
-                    onClick = { onAction(BoardAction.SetDugoutsVisible(!state.dugoutsVisible)) },
-                ) {
-                    Text(if (state.dugoutsVisible) "Hide dugouts" else "Show dugouts")
-                }
-                OutlinedButton(onClick = { onAction(BoardAction.ResetRequested) }) {
-                    Text("Reset")
-                }
-            }
+            EditorToolbar(state, onAction)
 
             Row(
                 modifier = Modifier
@@ -238,10 +218,20 @@ fun BoardScreen(
             }
         }
 
-        if (state.resetConfirmationVisible) {
-            ResetConfirmationDialog(
-                onConfirm = { onAction(BoardAction.ResetConfirmed) },
-                onCancel = { onAction(BoardAction.ResetCancelled) },
+        state.unsavedChangesPrompt?.let { pending ->
+            UnsavedChangesDialog(
+                setupName = setup.name,
+                pending = pending,
+                onSave = { onAction(BoardAction.UnsavedChangesSave) },
+                onDiscard = { onAction(BoardAction.UnsavedChangesDiscard) },
+                onCancel = { onAction(BoardAction.UnsavedChangesCancel) },
+            )
+        }
+        state.saveAsDialog?.let { dialog ->
+            SaveAsDialog(
+                initialName = dialog.initialName,
+                onSave = { onAction(BoardAction.SaveAsConfirmed(it)) },
+                onCancel = { onAction(BoardAction.SaveAsCancelled) },
             )
         }
 
@@ -253,23 +243,6 @@ fun BoardScreen(
                 .padding(start = 16.dp, end = 16.dp, bottom = SnackbarBottomOffset),
         )
     }
-}
-
-/** Asks before discarding unsaved changes; shown only when the setup has been changed. */
-@Composable
-private fun ResetConfirmationDialog(
-    onConfirm: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        title = { Text("Discard changes and reset?") },
-        text = {
-            Text("The setup will be replaced by the initial sample setup. Your changes will be lost.")
-        },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Reset") } },
-        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
-    )
 }
 
 @Composable

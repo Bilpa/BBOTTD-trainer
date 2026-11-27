@@ -14,12 +14,46 @@ data class BoardUiState(
     val selection: Selection? = null,
     /** A one-off message for the snackbar; cleared when the UI reports it as shown. */
     val message: EditorMessage? = null,
+    /** Whether [setup] has changes that are not saved. */
     val isDirty: Boolean = false,
+    /**
+     * Whether [setup] is saved in the library under its ID. A setup that is not (the initial
+     * sample, or a new setup) is saved with "Save as", which asks for a name.
+     */
+    val isInLibrary: Boolean = false,
+    /** Opening the last opened setup at start; editing is ignored until it is done. */
+    val isLoading: Boolean = false,
+    /** A save is in progress; further saves, New and Close wait until it is done. */
+    val isSaving: Boolean = false,
     val dugoutsVisible: Boolean = true,
     /** The player whose status context menu is open, if any. */
     val statusMenuPlayerId: PlayerId? = null,
-    /** Whether the "Discard changes and reset?" confirmation is showing. */
-    val resetConfirmationVisible: Boolean = false,
+    /**
+     * When set, the "Save changes?" prompt is showing; the action runs once the user saves or
+     * discards the changes.
+     */
+    val unsavedChangesPrompt: PendingAction? = null,
+    /** When set, the "Save as" dialog is showing. */
+    val saveAsDialog: SaveAsDialog? = null,
+    /**
+     * The user may close the app: there were no unsaved changes, or they were saved or
+     * discarded. The platform entry point closes the window when this becomes `true`.
+     */
+    val closeApproved: Boolean = false,
+)
+
+/** An action that would lose unsaved changes, so it waits for the user's answer. */
+sealed interface PendingAction {
+    /** Start a new setup from the initial sample setup. */
+    data object NewSetup : PendingAction
+
+    /** Close the app. */
+    data object Close : PendingAction
+}
+
+/** The "Save as" dialog, which asks for the setup's name; it starts with [initialName]. */
+data class SaveAsDialog(
+    val initialName: String,
 )
 
 /** What the user has selected, to be moved by clicking a target. */

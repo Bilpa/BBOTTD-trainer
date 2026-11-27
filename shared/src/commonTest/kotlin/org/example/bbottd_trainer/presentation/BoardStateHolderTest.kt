@@ -27,11 +27,7 @@ class BoardStateHolderTest {
         away = team(TeamId.AWAY, onFieldPlayer("a1", x = 7, y = 12)),
     )
 
-    private fun holder(setup: TacticalSetup = start) = BoardStateHolder(initialSetup = setup)
-
-    private fun BoardStateHolder.click(vararg actions: BoardAction) = actions.forEach(::onAction)
-
-    private val BoardStateHolder.current get() = state.value
+    private fun holder(setup: TacticalSetup = start) = testHolder(initialSetup = setup)
 
     private fun BoardStateHolder.positionOf(id: String): BoardPosition? =
         current.setup.findPlayer(PlayerId(id))?.position
@@ -43,7 +39,7 @@ class BoardStateHolderTest {
 
     @Test
     fun startsWithTheInitialSampleSetupByDefault() {
-        assertEquals(SampleSetups.initial, BoardStateHolder().current.setup)
+        assertEquals(SampleSetups.initial, testHolder().current.setup)
     }
 
     @Test
@@ -59,13 +55,13 @@ class BoardStateHolderTest {
 
     @Test
     fun dugoutsAreVisibleByDefaultAndCanStartHidden() {
-        assertTrue(BoardStateHolder().current.dugoutsVisible)
-        assertFalse(BoardStateHolder(dugoutsVisible = false).current.dugoutsVisible)
+        assertTrue(testHolder().current.dugoutsVisible)
+        assertFalse(testHolder(dugoutsVisible = false).current.dugoutsVisible)
     }
 
     @Test
     fun setDugoutsVisibleShowsAndHidesThemWithoutMarkingDirty() {
-        val holder = BoardStateHolder(dugoutsVisible = false)
+        val holder = testHolder(dugoutsVisible = false)
 
         holder.click(BoardAction.SetDugoutsVisible(true))
         assertTrue(holder.current.dugoutsVisible)
@@ -520,76 +516,77 @@ class BoardStateHolderTest {
         assertEquals(viaClick.current.setup, viaDrop.current.setup)
     }
 
-    // --- Reset -----------------------------------------------------------------------------
+    // --- New setup -------------------------------------------------------------------------
 
     @Test
-    fun resetWithoutUnsavedChangesResetsImmediately() {
+    fun newWithoutUnsavedChangesStartsANewSetupImmediately() {
         val holder = holder()
 
-        holder.click(BoardAction.ResetRequested)
+        holder.click(BoardAction.NewRequested)
 
         assertEquals(SampleSetups.initial, holder.current.setup)
-        assertFalse(holder.current.resetConfirmationVisible)
+        assertNull(holder.current.unsavedChangesPrompt)
         assertFalse(holder.current.isDirty)
+        assertFalse(holder.current.isInLibrary)
     }
 
     @Test
-    fun resetWithUnsavedChangesAsksFirstAndChangesNothingYet() {
+    fun newWithUnsavedChangesAsksFirstAndChangesNothingYet() {
         val holder = holder()
         holder.click(BoardAction.PlayerDoubleClicked(PlayerId("h1")))
         val changed = holder.current.setup
 
-        holder.click(BoardAction.ResetRequested)
+        holder.click(BoardAction.NewRequested)
 
-        assertTrue(holder.current.resetConfirmationVisible)
+        assertEquals(PendingAction.NewSetup, holder.current.unsavedChangesPrompt)
         assertEquals(changed, holder.current.setup)
         assertTrue(holder.current.isDirty)
     }
 
     @Test
-    fun confirmingTheResetRestoresTheSampleSetupAndClearsEditorState() {
+    fun discardingStartsTheNewSetupAndClearsEditorState() {
         val holder = holder(start.copy(ball = BallState(BoardPosition(4, 4))))
         holder.click(
             BoardAction.PlayerDoubleClicked(PlayerId("h1")),
             BoardAction.DugoutPlayerClicked(PlayerId("h2")),
             BoardAction.OpenStatusMenu(PlayerId("h1")),
             BoardAction.SetDugoutsVisible(false),
-            BoardAction.ResetRequested,
+            BoardAction.NewRequested,
         )
 
-        holder.click(BoardAction.ResetConfirmed)
+        holder.click(BoardAction.UnsavedChangesDiscard)
 
         val state = holder.current
         assertEquals(SampleSetups.initial, state.setup)
         assertNull(state.selection)
         assertNull(state.statusMenuPlayerId)
-        assertFalse(state.resetConfirmationVisible)
+        assertNull(state.unsavedChangesPrompt)
         assertFalse(state.isDirty)
         assertFalse(state.dugoutsVisible, "view settings are kept")
     }
 
     @Test
-    fun cancellingTheResetKeepsTheChanges() {
+    fun cancellingKeepsTheChanges() {
         val holder = holder()
-        holder.click(BoardAction.PlayerDoubleClicked(PlayerId("h1")), BoardAction.ResetRequested)
+        holder.click(BoardAction.PlayerDoubleClicked(PlayerId("h1")), BoardAction.NewRequested)
         val changed = holder.current.setup
 
-        holder.click(BoardAction.ResetCancelled)
+        holder.click(BoardAction.UnsavedChangesCancel)
 
-        assertFalse(holder.current.resetConfirmationVisible)
+        assertNull(holder.current.unsavedChangesPrompt)
         assertEquals(changed, holder.current.setup)
         assertEquals(PlayerStatus.PRONE, holder.statusOf("h1"))
         assertTrue(holder.current.isDirty)
     }
 
     @Test
-    fun editsAfterAResetMarkTheSetupDirtyAgain() {
-        val holder = BoardStateHolder()
+    fun editsAfterANewSetupMarkItDirtyAgain() {
+        val holder = testHolder()
         holder.click(
             BoardAction.DugoutPlayerClicked(PlayerId("home-1")),
             BoardAction.CellClicked(BoardPosition(7, 13)),
-            BoardAction.ResetRequested,
-            BoardAction.ResetConfirmed,
+            BoardAction.NewRequested,
+            BoardAction.UnsavedChangesDiscard,
         )
         assertFalse(holder.current.isDirty)
 
