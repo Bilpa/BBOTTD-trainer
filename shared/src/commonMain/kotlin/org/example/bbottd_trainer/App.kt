@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import org.example.bbottd_trainer.data.SetupFiles
 import org.example.bbottd_trainer.data.StoredEditorPreferences
 import org.example.bbottd_trainer.data.StoredSetupRepository
 import org.example.bbottd_trainer.data.TextStore
@@ -46,7 +47,8 @@ fun App(stateHolder: BoardStateHolder) {
 
 /**
  * Creates the editor's state holder once per composition, keeping saved setups and app settings
- * in [store]. It starts by reopening the setup opened last.
+ * in [store] and exporting and importing setup files through [files]. It starts by reopening the
+ * setup opened last.
  *
  * @param dugoutsVisibleByDefault whether the dugouts start visible. Android passes `false` because
  *   of limited screen space; the user can open them with the "Show dugouts" button.
@@ -54,6 +56,7 @@ fun App(stateHolder: BoardStateHolder) {
 @Composable
 fun rememberBoardStateHolder(
     store: TextStore,
+    files: SetupFiles,
     dugoutsVisibleByDefault: Boolean = true,
 ): BoardStateHolder {
     val scope = rememberCoroutineScope()
@@ -61,6 +64,7 @@ fun rememberBoardStateHolder(
         BoardStateHolder(
             repository = StoredSetupRepository(store),
             preferences = StoredEditorPreferences(store),
+            files = files,
             scope = scope,
             dugoutsVisible = dugoutsVisibleByDefault,
         )

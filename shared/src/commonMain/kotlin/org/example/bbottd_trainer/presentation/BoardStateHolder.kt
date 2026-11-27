@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.example.bbottd_trainer.data.EditorPreferences
+import org.example.bbottd_trainer.data.SetupFiles
 import org.example.bbottd_trainer.data.SetupRepository
 import org.example.bbottd_trainer.data.StorageFailure
 import org.example.bbottd_trainer.data.StorageResult
@@ -54,6 +55,7 @@ import org.example.bbottd_trainer.domain.movePlayerToDugout
  *
  * @param repository where setups are saved.
  * @param preferences where app settings, such as the theme, are remembered.
+ * @param files the platform's file dialogs, for exporting and importing setup files.
  * @param scope runs storage operations; usually the composition's scope.
  * @param dugoutsVisible whether the dugouts start visible. Android starts with them hidden because
  *   of limited screen space.
@@ -63,6 +65,7 @@ import org.example.bbottd_trainer.domain.movePlayerToDugout
 class BoardStateHolder(
     private val repository: SetupRepository,
     private val preferences: EditorPreferences,
+    private val files: SetupFiles,
     private val scope: CoroutineScope,
     dugoutsVisible: Boolean = true,
     initialSetup: TacticalSetup? = null,
@@ -79,7 +82,7 @@ class BoardStateHolder(
     /** What to do once the setup is saved through the "Save as" dialog, if anything. */
     private var afterSaveAs: PendingAction? = null
 
-    private val library = SetupLibraryController(mutableState, repository, scope) { showMessage(it) }
+    private val library = SetupLibraryController(mutableState, repository, files, scope) { showMessage(it) }
 
     val state: StateFlow<BoardUiState> = mutableState.asStateFlow()
 
@@ -153,6 +156,9 @@ class BoardStateHolder(
             is BoardAction.DeleteRequested,
             BoardAction.DeleteConfirmed,
             BoardAction.DeleteCancelled,
+            is BoardAction.ExportRequested,
+            BoardAction.ExportCurrentSetupRequested,
+            BoardAction.ImportRequested,
             -> library.onAction(action)
             is BoardAction.MessageShown -> mutableState.update {
                 if (it.message?.id == action.id) it.copy(message = null) else it

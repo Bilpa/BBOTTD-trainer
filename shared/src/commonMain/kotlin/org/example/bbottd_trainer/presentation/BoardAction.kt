@@ -134,6 +134,21 @@ sealed interface BoardAction {
     /** The delete confirmation was cancelled. */
     data object DeleteCancelled : BoardAction
 
+    /** Export a saved setup to a file the user chooses. */
+    data class ExportRequested(val summary: SetupSummary) : BoardAction
+
+    /**
+     * Export the setup as it is in the editor, including unsaved changes, to a file the user
+     * chooses. Works for setups that are not in the library too.
+     */
+    data object ExportCurrentSetupRequested : BoardAction
+
+    /**
+     * Import a setup file the user chooses into the library, under a new ID so that nothing in
+     * the library is replaced. It is not opened.
+     */
+    data object ImportRequested : BoardAction
+
     /** The UI has shown the message with this [id]. */
     data class MessageShown(val id: Long) : BoardAction
 }

@@ -6,7 +6,9 @@ import kotlinx.coroutines.Dispatchers
 import org.example.bbottd_trainer.data.EditorPreferences
 import org.example.bbottd_trainer.data.InMemoryTextStore
 import org.example.bbottd_trainer.data.StoredEditorPreferences
+import org.example.bbottd_trainer.data.SetupFiles
 import org.example.bbottd_trainer.data.SetupRepository
+import org.example.bbottd_trainer.data.UnavailableSetupFiles
 import org.example.bbottd_trainer.data.StorageResult
 import org.example.bbottd_trainer.data.StoredSetupRepository
 import org.example.bbottd_trainer.domain.SetupId
@@ -23,10 +25,12 @@ fun testHolder(
     initialSetup: TacticalSetup? = null,
     dugoutsVisible: Boolean = true,
     preferences: EditorPreferences = StoredEditorPreferences(InMemoryTextStore()),
+    files: SetupFiles = UnavailableSetupFiles,
 ): BoardStateHolder =
     BoardStateHolder(
         repository = repository,
         preferences = preferences,
+        files = files,
         scope = CoroutineScope(Dispatchers.Unconfined),
         dugoutsVisible = dugoutsVisible,
         initialSetup = initialSetup,

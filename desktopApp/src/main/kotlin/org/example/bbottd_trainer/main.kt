@@ -1,6 +1,7 @@
 package org.example.bbottd_trainer
 
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -11,12 +12,18 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import java.awt.Frame
+import java.util.concurrent.atomic.AtomicReference
+import org.example.bbottd_trainer.data.DesktopSetupFiles
 import org.example.bbottd_trainer.data.desktopTextStore
 import org.example.bbottd_trainer.presentation.BoardAction
 
 fun main() = application {
     val store = remember { desktopTextStore() }
-    val stateHolder = rememberBoardStateHolder(store)
+    // The file dialogs need the window, which exists only once the Window below is composed.
+    val appWindow = remember { AtomicReference<Frame?>(null) }
+    val files = remember { DesktopSetupFiles(owner = { appWindow.get() }) }
+    val stateHolder = rememberBoardStateHolder(store, files)
     val state by stateHolder.state.collectAsState()
 
     // Closing the window is a request: with unsaved changes the app asks first, and closes once
@@ -34,6 +41,7 @@ fun main() = application {
             position = WindowPosition(Alignment.Center),
         ),
     ) {
+        SideEffect { appWindow.set(window) }
         App(stateHolder)
     }
 }

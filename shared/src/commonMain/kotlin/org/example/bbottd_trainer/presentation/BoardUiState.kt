@@ -28,6 +28,8 @@ data class BoardUiState(
     val isLoading: Boolean = false,
     /** A save is in progress; further saves, New and Close wait until it is done. */
     val isSaving: Boolean = false,
+    /** An export or import is in progress (a file dialog may be open); others wait until it is done. */
+    val isTransferringFile: Boolean = false,
     val dugoutsVisible: Boolean = true,
     /**
      * The remembered theme choice: `true` dark, `false` light, `null` follow the system setting.

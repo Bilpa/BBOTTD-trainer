@@ -44,8 +44,8 @@ private val ListHeight = 360.dp
 private val RowMinHeight = 48.dp
 
 /**
- * The library of saved setups. Clicking a setup opens it; its "More" menu renames, duplicates or
- * deletes it. Entries that could not be read are listed with the reason and can be deleted.
+ * The library of saved setups. Clicking a setup opens it; its "More" menu renames, duplicates,
+ * exports or deletes it. "Import" adds a setup file to the library. Entries that could not be read are listed with the reason and can be deleted.
  * Rename and delete confirmations are shown on top of the library.
  *
  * @param openSetupId the setup open in the editor, if it is in the library; marked in the list.
@@ -73,6 +73,11 @@ fun LibraryDialog(
         },
         confirmButton = {
             TextButton(onClick = { onAction(BoardAction.LibraryClosed) }) { Text("Close") }
+        },
+        dismissButton = {
+            TextButton(onClick = { onAction(BoardAction.ImportRequested) }, enabled = !library.isBusy) {
+                Text("Import…")
+            }
         },
     )
 
@@ -104,7 +109,7 @@ private fun LibraryList(
     when {
         listError != null -> Text(listError, color = MaterialTheme.colorScheme.error)
         library.setups.isEmpty() && library.unreadable.isEmpty() && !library.isBusy ->
-            Text("No saved setups yet. Use Save or Save as to add the current setup to the library.")
+            Text("No saved setups yet. Use Save or Save as to add the current setup, or Import to add a setup file.")
         else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(library.setups, key = { "setup:" + it.id.value }) { summary ->
                 SetupRow(
@@ -172,6 +177,13 @@ private fun SetupRow(
                     onClick = {
                         menuOpen = false
                         onAction(BoardAction.DuplicateRequested(summary))
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Export…") },
+                    onClick = {
+                        menuOpen = false
+                        onAction(BoardAction.ExportRequested(summary))
                     },
                 )
                 DropdownMenuItem(
